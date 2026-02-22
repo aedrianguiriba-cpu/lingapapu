@@ -1,0 +1,77 @@
+[
+  {
+    "id": "LGAPU-001",
+    "name": "Juan Dela Cruz",
+    "birth": "1945-05-12",
+    "gender": "Male",
+    "contact": "09171234567",
+    "benefits": "Pension, Medical",
+    "notes": "Hypertension",
+    "transactions": [
+      {
+        "timestamp": "2025-10-01T09:00:00Z",
+        "note": "Initial registration"
+      }
+    ]
+  },
+  {
+    "id": "LGAPU-002",
+    "name": "Maria Santos",
+    "birth": "1950-11-20",
+    "gender": "Female",
+    "contact": "09181234567",
+    "benefits": "Medical",
+    "notes": "",
+    "transactions": [
+      {
+        "timestamp": "2025-10-02T10:00:00Z",
+        "note": "Initial registration"
+      }
+    ]
+  },
+  {
+    "id": "LGAPU-003",
+    "name": "Pedro Reyes",
+    "birth": "1942-02-03",
+    "gender": "Male",
+    "contact": "09171234567",
+    "benefits": "Pension",
+    "notes": "",
+    "transactions": [
+      {
+        "timestamp": "2025-10-03T11:00:00Z",
+        "note": "Initial registration"
+      }
+    ]
+  },
+  {
+    "id": "LGAPU-004",
+    "name": "Rosario Gomez",
+    "birth": "1948-07-16",
+    "gender": "Female",
+    "contact": "09171230000",
+    "benefits": "Pension, Grocery",
+    "notes": "",
+    "transactions": [
+      {
+        "timestamp": "2025-10-04T09:30:00Z",
+        "note": "Initial registration"
+      }
+    ]
+  },
+  {
+    "id": "LGAPU-005",
+    "name": "Carlos Ramos",
+    "birth": "1951-09-22",
+    "gender": "Male",
+    "contact": "09181230000",
+    "benefits": "Medical, Transportation",
+    "notes": "",
+    "transactions": [
+      {
+        "timestamp": "2025-10-05T08:45:00Z",
+        "note": "Initial registration"
+      }
+    ]
+  }
+]

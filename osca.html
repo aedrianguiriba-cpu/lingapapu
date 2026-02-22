@@ -1,0 +1,1389 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>LingapApu — OSCA/MSWD Staff</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="assets/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setupTabs();
+            
+            // Setup mobile navigation with swipe gestures
+            function setupNavToggle(){
+                const toggle = document.getElementById('navToggle');
+                const nav = document.getElementById('mainNav');
+                const overlay = document.getElementById('navOverlay');
+                if(!toggle || !nav) return;
+                
+                let touchStartX = 0;
+                let touchEndX = 0;
+                let touchStartY = 0;
+                let touchEndY = 0;
+                let isDragging = false;
+                let startTranslateX = 0;
+                
+                function closeNav(){
+                    nav.classList.remove('active');
+                    if(overlay) overlay.classList.remove('active');
+                    toggle.setAttribute('aria-expanded','false');
+                    document.body.style.overflow = '';
+                    nav.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                }
+                
+                function openNav(){
+                    nav.classList.add('active');
+                    if(overlay) overlay.classList.add('active');
+                    toggle.setAttribute('aria-expanded','true');
+                    document.body.style.overflow = 'hidden';
+                    nav.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                }
+                
+                toggle.addEventListener('click', function(){
+                    if(nav.classList.contains('active')){
+                        closeNav();
+                    } else {
+                        openNav();
+                    }
+                });
+                
+                if(overlay){
+                    overlay.addEventListener('click', closeNav);
+                }
+                
+                nav.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', closeNav);
+                });
+                
+                // Swipe from left edge to open
+                document.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    
+                    if(touchStartX < 30 && !nav.classList.contains('active')){
+                        isDragging = true;
+                        startTranslateX = -280;
+                        nav.style.transition = 'none';
+                    }
+                    else if(nav.classList.contains('active') && touchStartX < 280){
+                        isDragging = true;
+                        startTranslateX = 0;
+                        nav.style.transition = 'none';
+                    }
+                });
+                
+                document.addEventListener('touchmove', (e) => {
+                    if(!isDragging) return;
+                    
+                    touchEndX = e.touches[0].clientX;
+                    touchEndY = e.touches[0].clientY;
+                    
+                    const deltaX = touchEndX - touchStartX;
+                    const deltaY = Math.abs(touchEndY - touchStartY);
+                    
+                    if(deltaY > 30) {
+                        isDragging = false;
+                        nav.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                        return;
+                    }
+                    
+                    let newTranslateX = startTranslateX + deltaX;
+                    newTranslateX = Math.max(-280, Math.min(0, newTranslateX));
+                    
+                    nav.style.transform = `translateX(${newTranslateX}px)`;
+                    
+                    if(overlay){
+                        const opacity = (newTranslateX + 280) / 280 * 0.5;
+                        overlay.style.opacity = opacity;
+                        if(opacity > 0){
+                            overlay.classList.add('active');
+                        }
+                    }
+                    
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('touchend', () => {
+                    if(!isDragging) return;
+                    
+                    isDragging = false;
+                    nav.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                    
+                    const deltaX = touchEndX - touchStartX;
+                    
+                    if(startTranslateX === -280){
+                        if(deltaX > 50){
+                            openNav();
+                        } else {
+                            closeNav();
+                        }
+                    } else {
+                        if(deltaX < -50){
+                            closeNav();
+                        } else {
+                            openNav();
+                        }
+                    }
+                });
+            }
+            
+            setupNavToggle();
+            initOSCAPortal();
+        });
+    </script>
+</head>
+<body>
+<header class="header">
+  <div class="brand">
+    <img src="assets/pics/logo.png" alt="LingapApu" style="height:32px;width:auto;margin-right:8px">
+    <div>
+      <div class="logo">LingapApu</div>
+      <div class="small">OSCA/MSWD Staff</div>
+    </div>
+  </div>
+  <button id="navToggle" class="nav-toggle" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="hamburger" aria-hidden="true"></span>
+  </button>
+  <div class="nav-overlay" id="navOverlay"></div>
+  <nav class="nav" id="mainNav" aria-label="Primary">
+    <div class="nav-header">
+      <img src="assets/pics/logo.png" alt="LingapApu">
+      <div>
+        <div class="logo" style="font-size:18px">LingapApu</div>
+        <div class="small" style="color:var(--text-light)">OSCA Staff</div>
+      </div>
+    </div>
+    <a href="#verify" class="navlink active" data-tab="verify">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/>
+      </svg>
+      Verify QR Code
+    </a>
+    <a href="#update" class="navlink" data-tab="update">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Update Records
+    </a>
+    <a href="#transactions" class="navlink" data-tab="transactions">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+      Log Transactions
+    </a>
+    <a href="#eligibility" class="navlink" data-tab="eligibility">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      Check Eligibility
+    </a>
+    <a href="#profile" class="navlink" data-tab="profile">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      Profile
+    </a>
+  </nav>
+</header>
+
+<main class="container" style="max-width:100%;padding:0 20px">
+  <div class="card" style="max-width:100%">
+    
+    <!-- Verify QR Code Tab -->
+    <div class="tab-panel active" id="verifyTab">
+      <div style="background:linear-gradient(135deg,#3b82f6,#2563eb);padding:40px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 24px rgba(59,130,246,0.3)">
+        <div style="text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px">Verify Senior Citizen QR Code</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px">Scan or upload QR code to verify senior citizen identity</p>
+        </div>
+      </div>
+
+      <div class="scanner-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+        <div class="card" style="background:#fff;border:2px solid var(--border)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">QR Scanner</h3>
+          <div id="qr-reader-osca" style="position:relative;border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f8fafc;min-height:300px;display:flex;align-items:center;justify-content:center">
+            <video id="qr-video-osca" style="width:100%;height:auto;display:none" playsinline></video>
+            <canvas id="qr-canvas-osca" style="display:none"></canvas>
+            <div id="scan-status-osca" style="position:absolute;bottom:12px;left:12px;right:12px;padding:12px;background:rgba(0,0,0,0.8);color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:600">Ready to scan</div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:16px">
+            <button id="startScanBtnOSCA" class="btn" style="flex:1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Start Camera
+            </button>
+            <button id="stopScanBtnOSCA" class="btn ghost" style="flex:1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+              </svg>
+              Stop
+            </button>
+          </div>
+          <div style="text-align:center;margin:16px 0;color:var(--text-light);font-size:14px">OR</div>
+          <label class="btn ghost" style="display:block;text-align:center;cursor:pointer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Upload QR Image
+            <input type="file" id="qrImageUploadOSCA" accept="image/*" style="display:none">
+          </label>
+        </div>
+
+        <div class="card" style="background:#fff;border:2px solid var(--border)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Verification Result</h3>
+          <div id="verificationResult" style="text-align:center;padding:40px 20px">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;color:var(--text-light)">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/>
+            </svg>
+            <p style="margin:0;color:var(--text-light)">Scan a QR code to verify senior citizen</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Update Records Tab -->
+    <div class="tab-panel" id="updateTab">
+      <div style="background:linear-gradient(135deg,#10b981,#059669);padding:40px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 24px rgba(16,185,129,0.3)">
+        <div style="text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px">Update Senior Citizen Records</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px">Search and update senior citizen information</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:400px 1fr;gap:24px">
+        <div class="card" style="background:#fff;border:2px solid var(--border)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Scan Senior QR</h3>
+          <div id="qr-reader-update" style="position:relative;border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f8fafc;min-height:250px;display:flex;align-items:center;justify-content:center">
+            <video id="qr-video-update" style="width:100%;height:auto;display:none" playsinline></video>
+            <canvas id="qr-canvas-update" style="display:none"></canvas>
+            <div id="scan-status-update" style="position:absolute;bottom:12px;left:12px;right:12px;padding:12px;background:rgba(0,0,0,0.8);color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:600">Ready to scan</div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:16px">
+            <button id="startScanBtnUpdate" class="btn" style="flex:1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Start
+            </button>
+            <button id="stopScanBtnUpdate" class="btn ghost" style="flex:1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+              </svg>
+              Stop
+            </button>
+          </div>
+          <div style="text-align:center;margin:16px 0;color:var(--text-light);font-size:14px">OR</div>
+          <label class="btn ghost" style="display:block;text-align:center;cursor:pointer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Upload QR
+            <input type="file" id="qrImageUploadUpdate" accept="image/*" style="display:none">
+          </label>
+          <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Or search by name</label>
+              <input id="searchSeniorInput" class="input" placeholder="Enter name...">
+            </div>
+            <button id="searchSeniorBtn" class="btn" style="width:100%;margin-top:8px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              Search
+            </button>
+          </div>
+          <div id="searchResults" style="margin-top:16px;max-height:300px;overflow-y:auto"></div>
+        </div>
+
+        <div class="card" style="background:#fff;border:2px solid var(--border)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Update Information</h3>
+          <div id="updateForm" style="display:none">
+            <div class="form-group">
+              <label class="form-label">Senior ID</label>
+              <input id="updateId" class="input" readonly style="background:var(--bg)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input id="updateName" class="input">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Birth Date</label>
+                <input id="updateBirth" class="input" type="date">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Gender</label>
+                <select id="updateGender" class="input">
+                  <option>Male</option>
+                  <option>Female</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Number</label>
+              <input id="updateContact" class="input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Address</label>
+              <textarea id="updateAddress" class="input" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Medical Notes</label>
+              <textarea id="updateNotes" class="input" rows="3"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:24px">
+              <button id="saveUpdateBtn" class="btn" style="flex:1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Save Changes
+              </button>
+              <button id="cancelUpdateBtn" class="btn ghost" style="flex:1">Cancel</button>
+            </div>
+          </div>
+          <div id="updatePlaceholder" style="text-align:center;padding:60px 20px">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;color:var(--text-light)">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            <p style="margin:0;color:var(--text-light)">Search for a senior to update their records</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log Transactions Tab -->
+    <div class="tab-panel" id="transactionsTab">
+      <div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:40px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 24px rgba(245,158,11,0.3)">
+        <div style="text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px">Log Service or Discount Transaction</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px">Record senior citizen service usage or discount transactions</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:400px 1fr;gap:24px;margin-bottom:24px">
+        <div class="card" style="background:#fff;border:2px solid var(--border)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Scan Senior QR</h3>
+          <div id="qr-reader-transaction" style="position:relative;border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f8fafc;min-height:250px;display:flex;align-items:center;justify-content:center">
+            <video id="qr-video-transaction" style="width:100%;height:auto;display:none" playsinline></video>
+            <canvas id="qr-canvas-transaction" style="display:none"></canvas>
+            <div id="scan-status-transaction" style="position:absolute;bottom:12px;left:12px;right:12px;padding:12px;background:rgba(0,0,0,0.8);color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:600">Ready to scan</div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:16px">
+            <button id="startScanBtnTransaction" class="btn" style="flex:1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Start
+            </button>
+            <button id="stopScanBtnTransaction" class="btn ghost" style="flex:1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+              </svg>
+              Stop
+            </button>
+          </div>
+          <div style="text-align:center;margin:16px 0;color:var(--text-light);font-size:14px">OR</div>
+          <label class="btn ghost" style="display:block;text-align:center;cursor:pointer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Upload QR
+            <input type="file" id="qrImageUploadTransaction" accept="image/*" style="display:none">
+          </label>
+        </div>
+
+        <div class="card" style="background:#fff;border:2px solid var(--border)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Selected Senior</h3>
+          <div id="transactionSeniorInfo" style="text-align:center;padding:40px 20px">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;color:var(--text-light)">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/>
+            </svg>
+            <p style="margin:0;color:var(--text-light)">Scan QR code to select senior</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:#fff;border:2px solid var(--border);max-width:800px;margin:0 auto">
+        <h3 style="margin:0 0 24px;font-size:20px;font-weight:700">Transaction Details</h3>
+        <input type="hidden" id="transactionSeniorId">
+        <div class="form-group">
+          <label class="form-label">Transaction Type</label>
+          <select id="transactionType" class="input">
+            <option value="">Select type...</option>
+            <option value="Pension">Pension Collection</option>
+            <option value="Medical">Medical Service</option>
+            <option value="Transport">Transport Allowance</option>
+            <option value="Food">Food Assistance</option>
+            <option value="Discount">Senior Discount Used</option>
+            <option value="Other">Other Service</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Amount (₱)</label>
+            <input id="transactionAmount" class="input" type="number" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input id="transactionDate" class="input" type="date">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="transactionNotes" class="input" rows="3" placeholder="Additional details..."></textarea>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:24px">
+          <button id="logTransactionBtn" class="btn" style="flex:1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Log Transaction
+          </button>
+          <button id="clearTransactionBtn" class="btn ghost" style="flex:1">Clear Form</button>
+        </div>
+      </div>
+
+      <div class="card" style="background:#fff;border:2px solid var(--border);margin-top:24px">
+        <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Recent Transactions</h3>
+        <div id="recentTransactions" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+    </div>
+
+    <!-- Check Eligibility Tab -->
+    <div class="tab-panel" id="eligibilityTab">
+      <div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);padding:40px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 24px rgba(139,92,246,0.3)">
+        <div style="text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px">Check Benefit Eligibility</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px">Verify senior citizen eligibility for benefits and services</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:400px 1fr;gap:24px">
+        <div class="card" style="background:#fff;border:2px solid var(--border)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Scan Senior QR</h3>
+          <div id="qr-reader-eligibility" style="position:relative;border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f8fafc;min-height:250px;display:flex;align-items:center;justify-content:center">
+            <video id="qr-video-eligibility" style="width:100%;height:auto;display:none" playsinline></video>
+            <canvas id="qr-canvas-eligibility" style="display:none"></canvas>
+            <div id="scan-status-eligibility" style="position:absolute;bottom:12px;left:12px;right:12px;padding:12px;background:rgba(0,0,0,0.8);color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:600">Ready to scan</div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:16px">
+            <button id="startScanBtnEligibility" class="btn" style="flex:1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Start
+            </button>
+            <button id="stopScanBtnEligibility" class="btn ghost" style="flex:1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+              </svg>
+              Stop
+            </button>
+          </div>
+          <div style="text-align:center;margin:16px 0;color:var(--text-light);font-size:14px">OR</div>
+          <label class="btn ghost" style="display:block;text-align:center;cursor:pointer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Upload QR
+            <input type="file" id="qrImageUploadEligibility" accept="image/*" style="display:none">
+          </label>
+        </div>
+
+        <div class="card" style="background:#fff;border:2px solid var(--border)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Eligibility Status</h3>
+          <div id="eligibilityResult" style="text-align:center;padding:60px 20px">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;color:var(--text-light)">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <p style="margin:0;color:var(--text-light)">Enter a senior ID to check eligibility</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Tab -->
+    <div class="tab-panel" id="profileTab">
+      <div class="card" style="background:linear-gradient(to bottom,#fff,var(--bg));border:2px solid var(--border);min-height:600px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:10px;display:flex;align-items:center;justify-content:center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <h3 style="margin:0;font-size:20px;font-weight:700">OSCA Staff Profile</h3>
+          </div>
+        </div>
+
+        <div class="profile-grid" style="display:grid;grid-template-columns:300px 1fr;gap:32px;align-items:start">
+          <div class="profile-avatar-section" style="text-align:center">
+            <div style="width:200px;height:200px;margin:0 auto 20px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:20px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:72px;font-weight:700;box-shadow:0 8px 24px rgba(59,130,246,0.3)">
+              <span id="oscaProfileInitials">OS</span>
+            </div>
+            <h2 style="margin:0 0 8px;font-size:24px;font-weight:700" id="oscaProfileDisplayName">OSCA Staff</h2>
+            <p style="margin:0;color:var(--text-light);font-size:15px" id="oscaProfileRole">Staff Member</p>
+            <button class="btn ghost" id="logoutBtnOSCA" style="margin-top:20px;width:100%;color:#ef4444">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Logout
+            </button>
+          </div>
+
+          <div>
+            <div class="card" style="background:#fff;border:1px solid var(--border)">
+              <h4 style="margin:0 0 16px;font-size:18px;font-weight:700">Account Information</h4>
+              <div style="display:grid;gap:16px">
+                <div>
+                  <label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--text-light);text-transform:uppercase">Username</label>
+                  <div style="padding:12px 16px;background:var(--bg);border-radius:8px;font-size:15px;font-weight:600" id="oscaProfileUsername">osca</div>
+                </div>
+                <div>
+                  <label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--text-light);text-transform:uppercase">Role</label>
+                  <div style="padding:12px 16px;background:linear-gradient(135deg,var(--primary-light),#eff6ff);border-radius:8px;font-size:15px;font-weight:600;color:var(--primary)">OSCA/MSWD Staff</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div style="max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+    <div class="small">LingapApu OSCA Portal — Floridablanca, Pampanga</div>
+    <div class="small">For assistance: (045) 123-4567</div>
+  </div>
+</footer>
+
+<script>
+// Check authentication
+const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+if (!session.role || session.role !== 'osca') {
+    window.location.href = 'index.html';
+}
+
+// OSCA Portal Logic
+let videoStreamOSCA = null;
+let scanningIntervalOSCA = null;
+let videoStreamUpdate = null;
+let scanningIntervalUpdate = null;
+let videoStreamTransaction = null;
+let scanningIntervalTransaction = null;
+let videoStreamEligibility = null;
+let scanningIntervalEligibility = null;
+let currentSeniorForUpdate = null;
+let currentTransactionSenior = null;
+
+function initOSCAPortal() {
+    loadOSCAProfile();
+    setupVerifyScanner();
+    setupUpdateRecords();
+    setupTransactions();
+    setupEligibility();
+    loadRecentTransactions();
+    
+    // Set today's date for transaction form
+    document.getElementById('transactionDate').valueAsDate = new Date();
+}
+
+function loadOSCAProfile() {
+    const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+    const username = session.username || 'osca';
+    const initials = username.substring(0, 2).toUpperCase();
+    
+    document.getElementById('oscaProfileInitials').textContent = initials;
+    document.getElementById('oscaProfileDisplayName').textContent = username.charAt(0).toUpperCase() + username.slice(1);
+    document.getElementById('oscaProfileUsername').textContent = username;
+}
+
+// Verify QR Scanner Functions
+function setupVerifyScanner() {
+    document.getElementById('startScanBtnOSCA').addEventListener('click', startVerifyScanner);
+    document.getElementById('stopScanBtnOSCA').addEventListener('click', stopVerifyScanner);
+    document.getElementById('qrImageUploadOSCA').addEventListener('change', handleVerifyImageUpload);
+}
+
+function startVerifyScanner() {
+    const video = document.getElementById('qr-video-osca');
+    const canvas = document.getElementById('qr-canvas-osca');
+    const status = document.getElementById('scan-status-osca');
+    
+    status.textContent = 'Starting camera...';
+    status.style.background = 'rgba(59,130,246,0.9)';
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+    }).then(stream => {
+        videoStreamOSCA = stream;
+        video.srcObject = stream;
+        video.style.display = 'block';
+        video.play();
+        
+        status.textContent = 'Scanning...';
+        
+        const canvasContext = canvas.getContext('2d');
+        
+        scanningIntervalOSCA = setInterval(() => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                    processVerifyQRCode(code.data);
+                    stopVerifyScanner();
+                }
+            }
+        }, 300);
+    }).catch(err => {
+        status.textContent = 'Camera access denied';
+        status.style.background = 'rgba(239,68,68,0.9)';
+        console.error('Camera error:', err);
+    });
+}
+
+function stopVerifyScanner() {
+    if (videoStreamOSCA) {
+        videoStreamOSCA.getTracks().forEach(track => track.stop());
+        videoStreamOSCA = null;
+    }
+    if (scanningIntervalOSCA) {
+        clearInterval(scanningIntervalOSCA);
+        scanningIntervalOSCA = null;
+    }
+    
+    const video = document.getElementById('qr-video-osca');
+    const status = document.getElementById('scan-status-osca');
+    
+    video.style.display = 'none';
+    status.textContent = 'Ready to scan';
+    status.style.background = 'rgba(0,0,0,0.8)';
+}
+
+function handleVerifyImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.getElementById('qr-canvas-osca');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            
+            if (code) {
+                processVerifyQRCode(code.data);
+            } else {
+                alert('No QR code found in image');
+            }
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function processVerifyQRCode(data) {
+    try {
+        const qrData = JSON.parse(data);
+        const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+        const senior = profiles.find(p => p.id === qrData.id);
+        
+        const resultDiv = document.getElementById('verificationResult');
+        
+        if (senior) {
+            const age = calculateAge(senior.birth);
+            resultDiv.innerHTML = `
+                <div style="padding:24px">
+                    <div style="width:80px;height:80px;margin:0 auto 16px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <h3 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#10b981">Verified Senior Citizen</h3>
+                    <p style="margin:0 0 24px;color:var(--text-light)">Valid and active registration</p>
+                    
+                    <div style="background:var(--bg);padding:20px;border-radius:12px;text-align:left">
+                        <div style="margin-bottom:12px">
+                            <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">ID Number</div>
+                            <div style="font-size:16px;font-weight:700">${senior.id}</div>
+                        </div>
+                        <div style="margin-bottom:12px">
+                            <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Full Name</div>
+                            <div style="font-size:16px;font-weight:700">${senior.name}</div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                            <div>
+                                <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Age</div>
+                                <div style="font-size:16px;font-weight:700">${age} years</div>
+                            </div>
+                            <div>
+                                <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Gender</div>
+                                <div style="font-size:16px;font-weight:700">${senior.gender || 'N/A'}</div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom:12px">
+                            <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Contact</div>
+                            <div style="font-size:16px">${senior.contact}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Address</div>
+                            <div style="font-size:14px">${senior.address}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top:20px;padding:16px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:8px;border:1px solid #3b82f6">
+                        <div style="font-size:13px;font-weight:600;color:#3b82f6;margin-bottom:8px">Active Benefits</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px">
+                            ${(senior.benefits || []).map(b => `<span style="padding:4px 12px;background:#3b82f6;color:#fff;border-radius:6px;font-size:12px;font-weight:600">${b}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div style="padding:40px 24px">
+                    <div style="width:80px;height:80px;margin:0 auto 16px;background:#ef4444;border-radius:50%;display:flex;align-items:center;justify-content:center">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>
+                    <h3 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ef4444">Not Found</h3>
+                    <p style="margin:0;color:var(--text-light)">Senior citizen not found in database</p>
+                    <p style="margin:8px 0 0;font-size:14px;color:var(--text-light)">ID: ${qrData.id}</p>
+                </div>
+            `;
+        }
+    } catch (err) {
+        console.error('QR parse error:', err);
+        alert('Invalid QR code format');
+    }
+}
+
+// Update Records Functions
+function setupUpdateRecords() {
+    document.getElementById('startScanBtnUpdate').addEventListener('click', startUpdateScanner);
+    document.getElementById('stopScanBtnUpdate').addEventListener('click', stopUpdateScanner);
+    document.getElementById('qrImageUploadUpdate').addEventListener('change', handleUpdateImageUpload);
+    document.getElementById('searchSeniorBtn').addEventListener('click', searchSenior);
+    document.getElementById('saveUpdateBtn').addEventListener('click', saveUpdate);
+    document.getElementById('cancelUpdateBtn').addEventListener('click', cancelUpdate);
+    
+    document.getElementById('searchSeniorInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') searchSenior();
+    });
+}
+
+function startUpdateScanner() {
+    const video = document.getElementById('qr-video-update');
+    const canvas = document.getElementById('qr-canvas-update');
+    const status = document.getElementById('scan-status-update');
+    
+    status.textContent = 'Starting camera...';
+    status.style.background = 'rgba(16,185,129,0.9)';
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+    }).then(stream => {
+        videoStreamUpdate = stream;
+        video.srcObject = stream;
+        video.style.display = 'block';
+        video.play();
+        
+        status.textContent = 'Scanning...';
+        
+        const canvasContext = canvas.getContext('2d');
+        
+        scanningIntervalUpdate = setInterval(() => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                    processUpdateQRCode(code.data);
+                    stopUpdateScanner();
+                }
+            }
+        }, 300);
+    }).catch(err => {
+        status.textContent = 'Camera access denied';
+        status.style.background = 'rgba(239,68,68,0.9)';
+        console.error('Camera error:', err);
+    });
+}
+
+function stopUpdateScanner() {
+    if (videoStreamUpdate) {
+        videoStreamUpdate.getTracks().forEach(track => track.stop());
+        videoStreamUpdate = null;
+    }
+    if (scanningIntervalUpdate) {
+        clearInterval(scanningIntervalUpdate);
+        scanningIntervalUpdate = null;
+    }
+    
+    const video = document.getElementById('qr-video-update');
+    const status = document.getElementById('scan-status-update');
+    
+    video.style.display = 'none';
+    status.textContent = 'Ready to scan';
+    status.style.background = 'rgba(0,0,0,0.8)';
+}
+
+function handleUpdateImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.getElementById('qr-canvas-update');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            
+            if (code) {
+                processUpdateQRCode(code.data);
+            } else {
+                alert('No QR code found in image');
+            }
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function processUpdateQRCode(data) {
+    try {
+        const qrData = JSON.parse(data);
+        selectSeniorForUpdate(qrData.id);
+    } catch (err) {
+        console.error('QR parse error:', err);
+        alert('Invalid QR code format');
+    }
+}
+
+function searchSenior() {
+    const query = document.getElementById('searchSeniorInput').value.trim().toLowerCase();
+    if (!query) {
+        alert('Please enter a search term');
+        return;
+    }
+    
+    const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+    const results = profiles.filter(p => 
+        p.name.toLowerCase().includes(query)
+    );
+    
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (results.length === 0) {
+        resultsDiv.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-light)">No results found</div>`;
+        return;
+    }
+    
+    resultsDiv.innerHTML = results.map(senior => `
+        <div class="card" style="padding:12px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="selectSeniorForUpdate('${senior.id}')">
+            <div style="font-weight:700">${senior.name}</div>
+            <div style="font-size:13px;color:var(--text-light)">${senior.id}</div>
+        </div>
+    `).join('');
+}
+
+function selectSeniorForUpdate(seniorId) {
+    const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+    const senior = profiles.find(p => p.id === seniorId);
+    
+    if (!senior) return;
+    
+    currentSeniorForUpdate = senior;
+    
+    document.getElementById('updateId').value = senior.id;
+    document.getElementById('updateName').value = senior.name;
+    document.getElementById('updateBirth').value = senior.birth;
+    document.getElementById('updateGender').value = senior.gender || 'Male';
+    document.getElementById('updateContact').value = senior.contact;
+    document.getElementById('updateAddress').value = senior.address;
+    document.getElementById('updateNotes').value = senior.notes || '';
+    
+    document.getElementById('updatePlaceholder').style.display = 'none';
+    document.getElementById('updateForm').style.display = 'block';
+}
+
+function saveUpdate() {
+    if (!currentSeniorForUpdate) return;
+    
+    const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+    const index = profiles.findIndex(p => p.id === currentSeniorForUpdate.id);
+    
+    if (index === -1) return;
+    
+    profiles[index] = {
+        ...profiles[index],
+        name: document.getElementById('updateName').value,
+        birth: document.getElementById('updateBirth').value,
+        age: calculateAge(document.getElementById('updateBirth').value),
+        gender: document.getElementById('updateGender').value,
+        contact: document.getElementById('updateContact').value,
+        address: document.getElementById('updateAddress').value,
+        notes: document.getElementById('updateNotes').value
+    };
+    
+    localStorage.setItem('lingap_profiles_v3', JSON.stringify(profiles));
+    
+    alert('Record updated successfully!');
+    cancelUpdate();
+    document.getElementById('searchSeniorInput').value = '';
+    document.getElementById('searchResults').innerHTML = '';
+}
+
+function cancelUpdate() {
+    currentSeniorForUpdate = null;
+    document.getElementById('updateForm').style.display = 'none';
+    document.getElementById('updatePlaceholder').style.display = 'block';
+}
+
+// Transaction Functions
+function setupTransactions() {
+    document.getElementById('startScanBtnTransaction').addEventListener('click', startTransactionScanner);
+    document.getElementById('stopScanBtnTransaction').addEventListener('click', stopTransactionScanner);
+    document.getElementById('qrImageUploadTransaction').addEventListener('change', handleTransactionImageUpload);
+    document.getElementById('logTransactionBtn').addEventListener('click', logTransaction);
+    document.getElementById('clearTransactionBtn').addEventListener('click', clearTransactionForm);
+}
+
+function startTransactionScanner() {
+    const video = document.getElementById('qr-video-transaction');
+    const canvas = document.getElementById('qr-canvas-transaction');
+    const status = document.getElementById('scan-status-transaction');
+    
+    status.textContent = 'Starting camera...';
+    status.style.background = 'rgba(245,158,11,0.9)';
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+    }).then(stream => {
+        videoStreamTransaction = stream;
+        video.srcObject = stream;
+        video.style.display = 'block';
+        video.play();
+        
+        status.textContent = 'Scanning...';
+        
+        const canvasContext = canvas.getContext('2d');
+        
+        scanningIntervalTransaction = setInterval(() => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                    processTransactionQRCode(code.data);
+                    stopTransactionScanner();
+                }
+            }
+        }, 300);
+    }).catch(err => {
+        status.textContent = 'Camera access denied';
+        status.style.background = 'rgba(239,68,68,0.9)';
+        console.error('Camera error:', err);
+    });
+}
+
+function stopTransactionScanner() {
+    if (videoStreamTransaction) {
+        videoStreamTransaction.getTracks().forEach(track => track.stop());
+        videoStreamTransaction = null;
+    }
+    if (scanningIntervalTransaction) {
+        clearInterval(scanningIntervalTransaction);
+        scanningIntervalTransaction = null;
+    }
+    
+    const video = document.getElementById('qr-video-transaction');
+    const status = document.getElementById('scan-status-transaction');
+    
+    video.style.display = 'none';
+    status.textContent = 'Ready to scan';
+    status.style.background = 'rgba(0,0,0,0.8)';
+}
+
+function handleTransactionImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.getElementById('qr-canvas-transaction');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            
+            if (code) {
+                processTransactionQRCode(code.data);
+            } else {
+                alert('No QR code found in image');
+            }
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function processTransactionQRCode(data) {
+    try {
+        const qrData = JSON.parse(data);
+        const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+        const senior = profiles.find(p => p.id === qrData.id);
+        
+        if (senior) {
+            currentTransactionSenior = senior;
+            document.getElementById('transactionSeniorId').value = senior.id;
+            
+            const age = calculateAge(senior.birth);
+            document.getElementById('transactionSeniorInfo').innerHTML = `
+                <div style="padding:20px">
+                    <div style="width:60px;height:60px;margin:0 auto 12px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                    <h4 style="margin:0 0 4px;font-size:18px;font-weight:700">${senior.name}</h4>
+                    <p style="margin:0 0 12px;color:var(--text-light);font-size:14px">${senior.id}</p>
+                    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:12px">
+                        <span style="padding:4px 12px;background:var(--bg);border-radius:6px;font-size:12px;font-weight:600">${age} years old</span>
+                        <span style="padding:4px 12px;background:var(--bg);border-radius:6px;font-size:12px;font-weight:600">${senior.gender}</span>
+                    </div>
+                    <div style="font-size:13px;color:var(--text-light)">
+                        ${senior.contact}<br>
+                        ${senior.address}
+                    </div>
+                </div>
+            `;
+        } else {
+            alert('Senior citizen not found');
+            document.getElementById('transactionSeniorInfo').innerHTML = `
+                <div style="text-align:center;padding:40px 20px">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" style="margin:0 auto 12px">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    <p style="margin:0;color:#ef4444">Senior not found</p>
+                </div>
+            `;
+        }
+    } catch (err) {
+        console.error('QR parse error:', err);
+        alert('Invalid QR code format');
+    }
+}
+
+function logTransaction() {
+    const seniorId = document.getElementById('transactionSeniorId').value.trim();
+    const type = document.getElementById('transactionType').value;
+    const amount = document.getElementById('transactionAmount').value;
+    const date = document.getElementById('transactionDate').value;
+    const notes = document.getElementById('transactionNotes').value.trim();
+    
+    if (!seniorId) {
+        alert('Please scan a senior QR code first');
+        return;
+    }
+    
+    if (!type) {
+        alert('Please select transaction type');
+        return;
+    }
+    
+    if (!currentTransactionSenior) {
+        alert('Please scan a senior QR code first');
+        return;
+    }
+    
+    const transaction = {
+        seniorId: seniorId,
+        seniorName: currentTransactionSenior.name,
+        type: type,
+        amount: amount ? parseFloat(amount) : 0,
+        date: date,
+        notes: notes,
+        timestamp: new Date().toISOString(),
+        staff: JSON.parse(sessionStorage.getItem('currentUser') || '{}').username
+    };
+    
+    // Save to transactions storage
+    const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+    transactions.unshift(transaction);
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+    
+    alert('Transaction logged successfully!');
+    clearTransactionForm();
+    loadRecentTransactions();
+}
+
+function clearTransactionForm() {
+    currentTransactionSenior = null;
+    document.getElementById('transactionSeniorId').value = '';
+    document.getElementById('transactionType').value = '';
+    document.getElementById('transactionAmount').value = '';
+    document.getElementById('transactionDate').valueAsDate = new Date();
+    document.getElementById('transactionNotes').value = '';
+    document.getElementById('transactionSeniorInfo').innerHTML = `
+        <div style="text-align:center;padding:40px 20px">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;color:var(--text-light)">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/>
+            </svg>
+            <p style="margin:0;color:var(--text-light)">Scan QR code to select senior</p>
+        </div>
+    `;
+}
+
+function loadRecentTransactions() {
+    const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+    const recent = transactions.slice(0, 10);
+    
+    const container = document.getElementById('recentTransactions');
+    
+    if (recent.length === 0) {
+        container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-light)">No recent transactions</div>`;
+        return;
+    }
+    
+    container.innerHTML = recent.map(t => `
+        <div class="card" style="padding:16px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
+                <div>
+                    <div style="font-weight:700;font-size:16px">${t.seniorName}</div>
+                    <div style="font-size:13px;color:var(--text-light)">${t.seniorId}</div>
+                </div>
+                <div style="padding:4px 12px;background:linear-gradient(135deg,var(--primary-light),#eff6ff);border-radius:6px;font-size:12px;font-weight:600;color:var(--primary)">${t.type}</div>
+            </div>
+            ${t.amount > 0 ? `<div style="font-size:20px;font-weight:700;color:#10b981;margin-bottom:8px">₱${t.amount.toFixed(2)}</div>` : ''}
+            ${t.notes ? `<div style="font-size:14px;color:var(--text-light);margin-bottom:8px">${t.notes}</div>` : ''}
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-light)">
+                <span>${new Date(t.date).toLocaleDateString()}</span>
+                <span>By: ${t.staff}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Eligibility Functions
+function setupEligibility() {
+    document.getElementById('startScanBtnEligibility').addEventListener('click', startEligibilityScanner);
+    document.getElementById('stopScanBtnEligibility').addEventListener('click', stopEligibilityScanner);
+    document.getElementById('qrImageUploadEligibility').addEventListener('change', handleEligibilityImageUpload);
+}
+
+function startEligibilityScanner() {
+    const video = document.getElementById('qr-video-eligibility');
+    const canvas = document.getElementById('qr-canvas-eligibility');
+    const status = document.getElementById('scan-status-eligibility');
+    
+    status.textContent = 'Starting camera...';
+    status.style.background = 'rgba(139,92,246,0.9)';
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+    }).then(stream => {
+        videoStreamEligibility = stream;
+        video.srcObject = stream;
+        video.style.display = 'block';
+        video.play();
+        
+        status.textContent = 'Scanning...';
+        
+        const canvasContext = canvas.getContext('2d');
+        
+        scanningIntervalEligibility = setInterval(() => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                    processEligibilityQRCode(code.data);
+                    stopEligibilityScanner();
+                }
+            }
+        }, 300);
+    }).catch(err => {
+        status.textContent = 'Camera access denied';
+        status.style.background = 'rgba(239,68,68,0.9)';
+        console.error('Camera error:', err);
+    });
+}
+
+function stopEligibilityScanner() {
+    if (videoStreamEligibility) {
+        videoStreamEligibility.getTracks().forEach(track => track.stop());
+        videoStreamEligibility = null;
+    }
+    if (scanningIntervalEligibility) {
+        clearInterval(scanningIntervalEligibility);
+        scanningIntervalEligibility = null;
+    }
+    
+    const video = document.getElementById('qr-video-eligibility');
+    const status = document.getElementById('scan-status-eligibility');
+    
+    video.style.display = 'none';
+    status.textContent = 'Ready to scan';
+    status.style.background = 'rgba(0,0,0,0.8)';
+}
+
+function handleEligibilityImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.getElementById('qr-canvas-eligibility');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height);
+            
+            if (code) {
+                processEligibilityQRCode(code.data);
+            } else {
+                alert('No QR code found in image');
+            }
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function processEligibilityQRCode(data) {
+    try {
+        const qrData = JSON.parse(data);
+        checkEligibility(qrData.id);
+    } catch (err) {
+        console.error('QR parse error:', err);
+        alert('Invalid QR code format');
+    }
+}
+
+function checkEligibility(seniorId) {
+    if (!seniorId) {
+        alert('Please scan a QR code');
+        return;
+    }
+    
+    const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+    const senior = profiles.find(p => p.id === seniorId);
+    
+    const resultDiv = document.getElementById('eligibilityResult');
+    
+    if (!senior) {
+        resultDiv.innerHTML = `
+            <div style="padding:40px 24px">
+                <div style="width:80px;height:80px;margin:0 auto 16px;background:#ef4444;border-radius:50%;display:flex;align-items:center;justify-content:center">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </div>
+                <h3 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ef4444">Not Found</h3>
+                <p style="margin:0;color:var(--text-light)">Senior citizen not found in database</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const age = calculateAge(senior.birth);
+    const isEligible = age >= 60 && senior.status === 'active';
+    
+    resultDiv.innerHTML = `
+        <div style="padding:24px">
+            <div style="width:80px;height:80px;margin:0 auto 16px;background:${isEligible ? 'linear-gradient(135deg,#10b981,#059669)' : '#ef4444'};border-radius:50%;display:flex;align-items:center;justify-content:center">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                    ${isEligible ? '<polyline points="20 6 9 17 4 12"/>' : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'}
+                </svg>
+            </div>
+            <h3 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${isEligible ? '#10b981' : '#ef4444'}">${isEligible ? 'Eligible' : 'Not Eligible'}</h3>
+            <p style="margin:0 0 24px;color:var(--text-light)">${isEligible ? 'Can access all benefits' : 'Does not meet requirements'}</p>
+            
+            <div style="background:var(--bg);padding:20px;border-radius:12px;text-align:left">
+                <div style="margin-bottom:12px">
+                    <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Senior Citizen</div>
+                    <div style="font-size:18px;font-weight:700">${senior.name}</div>
+                    <div style="font-size:14px;color:var(--text-light)">${senior.id}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                    <div>
+                        <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Age</div>
+                        <div style="font-size:16px;font-weight:700">${age} years</div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Status</div>
+                        <div style="font-size:16px;font-weight:700;text-transform:capitalize">${senior.status || 'Active'}</div>
+                    </div>
+                </div>
+                ${isEligible && senior.benefits && senior.benefits.length > 0 ? `
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                    <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:8px">Available Benefits</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px">
+                        ${senior.benefits.map(b => `<span style="padding:4px 12px;background:#10b981;color:#fff;border-radius:6px;font-size:12px;font-weight:600">${b}</span>`).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Logout
+document.getElementById('logoutBtnOSCA').addEventListener('click', () => {
+    sessionStorage.removeItem('currentUser');
+    window.location.href = 'index.html';
+});
+</script>
+</body>
+</html>
