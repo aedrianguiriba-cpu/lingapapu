@@ -15,8 +15,8 @@ function viewRegistrationDetails(index) {
   content.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px">
       <div style="grid-column:1/-1;padding:20px;background:linear-gradient(to bottom,var(--bg),#fff);border-radius:12px;border:2px solid var(--border);display:flex;align-items:center;gap:16px">
-        <div style="width:80px;height:80px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;flex-shrink:0">
-          ${reg.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+        <div style="width:80px;height:80px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden">
+          ${reg.photo ? `<img src="${reg.photo}" style="width:100%;height:100%;object-fit:cover">` : reg.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
         </div>
         <div style="flex:1">
           <h4 style="margin:0 0 8px;font-size:24px;font-weight:700;color:var(--text)">${reg.name}</h4>
@@ -127,40 +127,64 @@ function closeApproveRegistrationModal() {
   currentRegistrationIndex = null;
 }
 
-function confirmApproveRegistration() {
+async function confirmApproveRegistration() {
   if (currentRegistrationIndex === null) return;
-  
+
   const reg = pendingRegistrations[currentRegistrationIndex];
-  
-  // Add to profiles
+
+  // Build new profile object
   const newProfile = {
-    name: reg.name,
-    age: reg.age,
-    birthday: reg.birthday,
-    address: reg.address,
-    contact: reg.contact,
-    id: `SC${String(profiles.length + 1).padStart(5, '0')}`,
-    memberSince: new Date().toISOString().split('T')[0],
-    status: 'Active',
-    balance: 0,
-    transactions: []
+    name:         reg.name,
+    age:          reg.age,
+    birthday:     reg.birthday,
+    address:      reg.address,
+    contact:      reg.contact,
+    id:           `SC${String(profiles.length + 1).padStart(5, '0')}`,
+    memberSince:  new Date().toISOString().split('T')[0],
+    status:       'Active',
+    balance:      0,
+    transactions: [],
+    username:     reg.username,
+    password:     reg.password,
+    birth:        reg.birth,
+    photo:        reg.photo || undefined
   };
-  
+
+  // Disable the confirm button while uploading
+  const confirmBtn = document.querySelector('#approveRegistrationModal .btn-primary, #approveRegistrationModal button[onclick*="confirmApprove"]');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Saving\u2026'; }
+
+  // --- Upload to Supabase FIRST ---
+  if (window.db) {
+    const userPayload = {
+      username:  reg.username,
+      password:  reg.password,
+      role:      'senior',
+      senior_id: newProfile.id
+    };
+    const ok = await window.db.approveRegistration(reg.id, newProfile, userPayload);
+    if (!ok) {
+      if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Approve'; }
+      showSuccessToast('\u26a0\ufe0f Database error \u2014 could not save. Please try again.');
+      return;
+    }
+  }
+
+  // Only update local state after successful DB write
   profiles.push(newProfile);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
-  
-  // Remove from pending
   pendingRegistrations.splice(currentRegistrationIndex, 1);
-  
+  localStorage.setItem('lingap_pending_v3', JSON.stringify(pendingRegistrations));
+
+  if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Approve'; }
+
   // Update displays
   filterSeniors();
   loadPendingRegistrations();
   updateDashboardStats();
   updateSeniorStats();
-  
+
   closeApproveRegistrationModal();
-  
-  // Show success feedback
   showSuccessToast(`${reg.name} has been approved and added to the registry`);
 }
 
@@ -189,6 +213,11 @@ function confirmRejectRegistration() {
   
   // Remove from pending
   pendingRegistrations.splice(currentRegistrationIndex, 1);
+
+  // Write-through to Supabase
+  if (window.db && reg.id) {
+    window.db.rejectRegistration(reg.id).catch(e => console.error('[rejectRegistration]', e));
+  }
   
   // Update display
   loadPendingRegistrations();

@@ -1,7 +1,32 @@
 // Modal Functions for Admin Page
 
 let currentSeniorForEdit = null;
-let currentQRSeniorId = null;
+let currentQRSeniorId    = null;
+
+/**
+ * Persist the global profiles[] to localStorage and Supabase.
+ * Called after every local mutation (edit, delete).
+ */
+function saveProfiles() {
+  // Save to localStorage cache
+  try { localStorage.setItem('lingap_profiles_v3', JSON.stringify(profiles)); } catch(e) {}
+}
+
+/**
+ * Persist a list of updated seniors to Supabase (fire-and-forget).
+ */
+function _pushSeniorsToSupabase(list) {
+  if (!window.db) return;
+  window.db.upsertSeniors(list).catch(e => console.error('[admin-modals] upsert error', e));
+}
+
+/**
+ * Delete a senior from Supabase (fire-and-forget).
+ */
+function _deleteSeniorInSupabase(id) {
+  if (!window.db) return;
+  window.db.deleteSenior(id).catch(e => console.error('[admin-modals] delete error', e));
+}
 
 // Senior Details Modal
 function viewSeniorDetails(idx) {
@@ -181,20 +206,32 @@ function saveEditedSenior(event) {
   const idx = parseInt(document.getElementById('editSeniorIndex').value);
   if(isNaN(idx) || idx < 0 || idx >= profiles.length) return;
   
-  profiles[idx].name = document.getElementById('editSeniorName').value.trim();
-  profiles[idx].birth = document.getElementById('editSeniorBirth').value;
-  profiles[idx].gender = document.getElementById('editSeniorGender').value;
-  profiles[idx].contact = document.getElementById('editSeniorContact').value.trim();
-  profiles[idx].email = document.getElementById('editSeniorEmail').value.trim();
-  profiles[idx].address = document.getElementById('editSeniorAddress').value.trim();
+  profiles[idx].name     = document.getElementById('editSeniorName').value.trim();
+  profiles[idx].birth    = document.getElementById('editSeniorBirth').value;
+  profiles[idx].gender   = document.getElementById('editSeniorGender').value;
+  profiles[idx].contact  = document.getElementById('editSeniorContact').value.trim();
+  profiles[idx].email    = document.getElementById('editSeniorEmail').value.trim();
+  profiles[idx].address  = document.getElementById('editSeniorAddress').value.trim();
   profiles[idx].benefits = document.getElementById('editSeniorBenefits').value.trim();
-  profiles[idx].notes = document.getElementById('editSeniorNotes').value.trim();
-  
+  profiles[idx].notes    = document.getElementById('editSeniorNotes').value.trim();
+
   saveProfiles();
+  // Also update in Supabase
+  if (window.db) {
+    window.db.updateSenior(profiles[idx].id, {
+      name:     profiles[idx].name,
+      birth:    profiles[idx].birth,
+      gender:   profiles[idx].gender,
+      contact:  profiles[idx].contact,
+      email:    profiles[idx].email,
+      address:  profiles[idx].address,
+      benefits: profiles[idx].benefits,
+      notes:    profiles[idx].notes
+    }).catch(e => console.error('[editSenior]', e));
+  }
   filterSeniors();
   updateSeniorStats();
   closeEditSeniorModal();
-  
   showSuccessToast(`${profiles[idx].name} updated successfully!`);
 }
 
@@ -328,14 +365,18 @@ function confirmDeleteSenior() {
     return;
   }
   
-  const p = profiles[currentDeleteIndex];
+  const p    = profiles[currentDeleteIndex];
   const name = p.name;
-  
+  const id   = p.id;
+
   profiles.splice(currentDeleteIndex, 1);
   saveProfiles();
+  // Also delete from Supabase
+  if (window.db) {
+    window.db.deleteSenior(id).catch(e => console.error('[deleteSenior]', e));
+  }
   filterSeniors();
   updateSeniorStats();
   closeDeleteSeniorModal();
-  
   showSuccessToast(`${name} has been removed from the system.`);
 }

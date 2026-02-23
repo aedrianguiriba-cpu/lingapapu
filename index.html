@@ -1,100 +1,687 @@
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>LingapApu — Login</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#22c55e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LingapApu">
+<link rel="apple-touch-icon" href="assets/pics/logo.png">
 <link rel="stylesheet" href="assets/style.css">
+<script async src="https://cdn.jsdelivr.net/ml5js/latest/ml5.min.js"></script>
 <style>
-  .login-container {
-    min-height: 100vh;
+  /* ── Reset / base ── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* ── Page layout ── */
+  body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; background: #f4f7f6; }
+
+  .login-wrapper {
     display: flex;
-    align-items: center;
+    min-height: 100vh;
+  }
+
+  /* ── Left branding panel ── */
+  .brand-panel {
+    width: 42%;
+    flex-shrink: 0;
+    background: linear-gradient(160deg, #166534 0%, #22c55e 60%, #4ade80 100%);
+    display: flex;
+    flex-direction: column;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 20px;
+    padding: 56px 48px;
     position: relative;
     overflow: hidden;
   }
-  .login-container::before {
+  .brand-panel::before {
     content: '';
     position: absolute;
-    width: 500px;
-    height: 500px;
-    background: rgba(255,255,255,0.1);
+    width: 360px; height: 360px;
+    background: rgba(255,255,255,0.06);
     border-radius: 50%;
-    top: -250px;
-    right: -250px;
-    animation: float 20s ease-in-out infinite;
+    top: -120px; right: -100px;
   }
-  .login-container::after {
+  .brand-panel::after {
     content: '';
     position: absolute;
-    width: 400px;
-    height: 400px;
-    background: rgba(255,255,255,0.08);
+    width: 280px; height: 280px;
+    background: rgba(255,255,255,0.05);
     border-radius: 50%;
-    bottom: -200px;
-    left: -200px;
-    animation: float 15s ease-in-out infinite reverse;
+    bottom: -80px; left: -80px;
   }
-  @keyframes float {
-    0%, 100% { transform: translateY(0px) translateX(0px); }
-    50% { transform: translateY(-20px) translateX(20px); }
+  .brand-logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 52px;
+    position: relative; z-index: 2;
+  }
+  .brand-logo-icon {
+    width: 52px; height: 52px;
+    background: rgba(255,255,255,0.2);
+    border: 1.5px solid rgba(255,255,255,0.35);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px;
+  }
+  .brand-logo-icon img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+  .brand-logo-text {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+  .brand-logo-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    margin-top: 2px;
+  }
+  .brand-headline {
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    letter-spacing: -0.8px;
+    margin: 0 0 14px;
+    position: relative; z-index: 2;
+  }
+  .brand-tagline {
+    font-size: 15px;
+    color: rgba(255,255,255,0.82);
+    line-height: 1.6;
+    margin: 0 0 44px;
+    font-weight: 400;
+    position: relative; z-index: 2;
+  }
+  .brand-features {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: relative; z-index: 2;
+  }
+  .brand-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .brand-feature-icon {
+    width: 38px; height: 38px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .brand-feature-text strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+  .brand-feature-text span {
+    font-size: 12px;
+    color: rgba(255,255,255,0.72);
+    line-height: 1.5;
+  }
+  .brand-footer {
+    margin-top: 52px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.55);
+    position: relative; z-index: 2;
+  }
+
+  /* ── Right form panel ── */
+  .form-panel {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 24px;
+    overflow-y: auto;
+    background: #f4f7f6;
   }
   .login-card {
-    background: rgba(255,255,255,0.95);
-    backdrop-filter: blur(20px);
-    border-radius: 24px;
-    padding: 48px 40px;
-    max-width: 440px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 44px 40px;
     width: 100%;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.2);
-    position: relative;
-    z-index: 1;
+    max-width: 440px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    animation: fadeUp 0.35s ease-out both;
+    margin: auto 0;
   }
-  .login-logo {
-    width: 90px;
-    height: 90px;
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  /* ── Logo in card (mobile only top) ── */
+  .card-logo {
+    display: none;
+    width: 48px; height: 48px;
+    background: #22c55e;
+    border-radius: 12px;
+    align-items: center; justify-content: center;
+    padding: 10px;
     margin: 0 auto 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 22px;
+  }
+  .card-logo img {
+    width: 100%; height: 100%; object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+
+  /* ── Form header ── */
+  .login-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 6px;
+    letter-spacing: -0.5px;
+  }
+  .login-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 32px;
+    font-weight: 400;
+  }
+  .form-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 6px;
+    letter-spacing: -0.5px;
+    text-align: left;
+  }
+  .form-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 28px;
+    font-weight: 400;
+    text-align: left;
+  }
+
+  /* ── Inputs ── */
+  .input-group {
+    position: relative;
+    margin-bottom: 18px;
+  }
+  .input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .input-group input, .input-group select, .input-group textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    background: #f9fafb;
+    color: #111827;
+    font-weight: 500;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .input-group input::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+  }
+  .input-group input:hover {
+    border-color: #d1d5db;
+    background: #fff;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: #22c55e;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+  }
+
+  /* ── Divider label ── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 18px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-divider::before,
+  .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+  }
+
+  /* ── Primary button ── */
+  .login-btn {
+    width: 100%;
+    padding: 13px;
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 30px rgba(102,126,234,0.4);
+    gap: 8px;
+    letter-spacing: 0.1px;
+  }
+  .login-btn:hover { background: #16a34a; }
+  .login-btn:active { background: #15803d; transform: scale(0.99); }
+
+  /* ── Auth links ── */
+  .auth-links {
+    margin-top: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 18px;
+    border-top: 1.5px solid #f3f4f6;
+    font-size: 13px;
+    color: #6b7280;
+  }
+  .auth-link {
+    color: #16a34a;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    transition: color 0.2s;
+  }
+  .auth-link:hover { color: #15803d; }
+
+  /* ── Back link ── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: #16a34a;
+    font-weight: 600;
+    text-decoration: none;
+    margin-bottom: 22px;
+    transition: color 0.2s, transform 0.2s;
+  }
+  .back-link:hover { color: #15803d; transform: translateX(-2px); }
+
+  
+
+  /* ── Messages ── */
+  .error-msg {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+    border-radius: 10px;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .success-msg {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    border-radius: 10px;
+    color: #15803d;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 860px) {
+    .brand-panel { display: none; }
+    .form-panel { background: #f0fdf4; padding: 28px 16px; }
+    .login-card { padding: 36px 28px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+    .card-logo { display: flex; }
+    .login-title, .form-title { text-align: center; }
+    .login-subtitle, .form-subtitle { text-align: center; }
+    .auth-links { flex-direction: column; gap: 10px; text-align: center; }
+  }
+  @media (max-width: 480px) {
+    .login-card { padding: 28px 20px; border-radius: 14px; }
+  }
+</style><!--ORPHAN_CSS_REMOVED
+  .login-container::after {
+    content: '';
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: transparent;
+    border-radius: 50%;
+    bottom: -150px;
+    left: -100px;
+  }
+  .login-card {
+    background: #ffffff;
+    backdrop-filter: none;
+    border-radius: 8px;
+    padding: 40px 36px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: none;
+    position: relative;
+    z-index: 10;
+    border: 1px solid var(--border);
+  }
+  .login-logo {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 28px;
+    background: #22c55e;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 12px;
+    box-shadow: none;
   }
   .login-logo img {
     width: 100%;
     height: 100%;
     object-fit: contain;
+    filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(10000%) hue-rotate(88deg);
   }
   .login-title {
     margin: 0 0 8px 0;
-    font-size: 36px;
-    font-weight: 800;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -1px;
+    font-size: 32px;
+    font-weight: 600;
+    color: #1f2937;
+    letter-spacing: 0;
     text-align: center;
   }
   .login-subtitle {
-    margin: 0 0 36px 0;
-    font-size: 15px;
-    color: #64748b;
+    margin: 0 0 32px 0;
+    font-size: 14px;
+    color: #6b7280;
     text-align: center;
-    font-weight: 500;
+    font-weight: 400;
+    letter-spacing: 0;
   }
   .role-grid {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
     margin-bottom: 24px;
   }
   .role-option {
-    padding: 12px 16px;
-    border: 2px solid transparent;
-    border-radius: 10px;
+    padding: 11px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+  .role-option:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+  }
+  .role-option.active {
+    background: #f0fdf4;
+    border-color: #22c55e;
+  }
+  .role-option.active .role-name {
+    color: #16a34a;
+    font-weight: 600;
+  }
+  .role-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .role-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374155;
+    flex: 1;
+    text-align: left;
+  }
+  .input-group {
+    position: relative;
+    margin-bottom: 18px;
+  }
+  .input-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .input-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    color: #1f2937;
+    font-weight: 400;
+  }
+  .input-group input::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+  }
+  .input-group input:hover {
+    border-color: #d1d5db;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: #22c55e;
+    box-shadow: none;
+  }
+  .login-btn {
+    width: 100%;
+    padding: 10px;
+    background: #22c55e;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: none;
+    margin-top: 8px;
+    letter-spacing: 0;
+  }
+  .login-btn:hover {
+    background: #16a34a;
+  }
+  .login-btn:active {
+    background: #15803d;
+  }
+  .demo-box {
+    margin-top: 32px;
+    padding: 18px 16px;
+    background: #f0fdf4;
+    border-radius: 8px;
+    border: 1px solid #bbf7d0;
+    transition: all 0.2s ease;
+  }
+  .demo-box:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+  }
+  .demo-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .demo-icon {
+    width: 32px;
+    height: 32px;
+    background: #16a34a;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+    font-size: 16px;
+  }
+  .demo-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #155e3d;
+    letter-spacing: 0;
+  }
+  .demo-creds {
+    font-size: 12px;
+    line-height: 2;
+    color: #475569;
+    margin: 0;
+    font-weight: 400;
+  }
+  .demo-creds strong {
+    color: #1e293b;
+    font-weight: 700;
+  }
+  .error-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: #fee2e2;
+    border-radius: 8px;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .success-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: #dcfce7;
+    border-radius: 8px;
+    border: 1px solid #86efac;
+    color: #15803d;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .auth-link {
+    display: inline-block;
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  .auth-link:hover {
+    color: #155e3d;
+  }
+  .auth-links {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: #475569;
+    padding-top: 20px;
+    border-top: 1.5px solid #e5e7eb;
+  }
+  .auth-links a {
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 4px;
+    transition: color 0.2s ease;
+  }
+  .auth-links a:hover {
+    color: #155e3d;
+  }
+  .form-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 12px 0;
+    text-align: center;
+    letter-spacing: -0.5px;
+  }
+  .form-subtitle {
+    font-size: 15px;
+    color: #475569;
+    text-align: center;
+    margin: 0 0 32px 0;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 24px;
+    transition: all 0.2s ease;
+  }
+  .back-link:hover {
+    color: #155e3d;
+    transform: translateX(-3px);
+  }
+  .back-link svg {
+    transition: transform 0.2s ease;
+  }
+  .back-link:hover svg {
+    transform: translateX(-2px);
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .login-card {
+    animation: fadeIn 0.4s ease-out;
+  }
+  .role-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .role-option {
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     background: #f8fafc;
@@ -103,123 +690,130 @@
     gap: 12px;
     position: relative;
   }
-  .role-option::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 0;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    border-radius: 0 4px 4px 0;
-    transition: height 0.2s ease;
-  }
   .role-option:hover {
     background: #f1f5f9;
-    transform: translateX(4px);
-  }
-  .role-option:hover::before {
-    height: 60%;
+    border-color: #cbd5e1;
   }
   .role-option.active {
-    background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08));
-    border-color: transparent;
+    background: #dcfce7;
+    border-color: #16a34a;
   }
-  .role-option.active::before {
-    height: 70%;
+  .role-option.active .role-name {
+    color: #155e3d;
+    font-weight: 600;
   }
   .role-icon {
-    font-size: 22px;
+    font-size: 20px;
     flex-shrink: 0;
   }
   .role-name {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     color: #334155;
     flex: 1;
     text-align: left;
   }
   .input-group {
     position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
   .input-group label {
     display: block;
-    font-size: 14px;
-    font-weight: 600;
-    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
     margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
   }
   .input-group input {
     width: 100%;
-    padding: 14px 16px;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    font-size: 15px;
+    padding: 13px 15px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
     transition: all 0.2s ease;
-    background: white;
+    background: #f8fafc;
+    color: #1e293b;
+    font-weight: 500;
+  }
+  .input-group input::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+  }
+  .input-group input:hover {
+    border-color: #cbd5e1;
+    background: #ffffff;
   }
   .input-group input:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 4px rgba(102,126,234,0.1);
+    border-color: #16a34a;
+    background: #ffffff;
   }
   .login-btn {
     width: 100%;
-    padding: 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 13px;
+    background: #16a34a;
     color: white;
     border: none;
-    border-radius: 12px;
-    font-size: 16px;
+    border-radius: 8px;
+    font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 8px 20px rgba(102,126,234,0.3);
-    margin-top: 8px;
+    transition: background 0.2s ease;
+    box-shadow: none;
+    margin-top: 12px;
+    letter-spacing: 0.3px;
   }
   .login-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(102,126,234,0.4);
+    background: #15803d;
   }
   .login-btn:active {
-    transform: translateY(0);
+    background: #166534;
   }
   .demo-box {
-    margin-top: 28px;
-    padding: 20px;
-    background: linear-gradient(135deg, #f0f4ff, #faf5ff);
-    border-radius: 12px;
-    border: 2px solid #e0e7ff;
+    margin-top: 32px;
+    padding: 18px 16px;
+    background: #f0fdf4;
+    border-radius: 8px;
+    border: 1px solid #bbf7d0;
+    transition: all 0.2s ease;
+  }
+  .demo-box:hover {
+    background: #dcfce7;
+    border-color: #86efac;
   }
   .demo-header {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
   .demo-icon {
-    width: 28px;
-    height: 28px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    background: #16a34a;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    color: white;
+    font-size: 16px;
   }
   .demo-title {
     margin: 0;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    color: #5b21b6;
+    color: #155e3d;
+    letter-spacing: 0;
   }
   .demo-creds {
-    font-size: 13px;
-    line-height: 1.8;
+    font-size: 12px;
+    line-height: 2;
     color: #475569;
     margin: 0;
+    font-weight: 400;
   }
   .demo-creds strong {
     color: #1e293b;
@@ -227,116 +821,380 @@
   }
   .error-msg {
     margin-top: 16px;
-    padding: 12px;
-    background: #fee;
+    padding: 13px 15px;
+    background: #fee2e2;
     border-radius: 8px;
-    color: #dc2626;
-    font-size: 14px;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+    font-size: 13px;
     font-weight: 600;
-    text-align: center;
-    display: none;
   }
-  .error-msg.show {
-    display: block;
-  }
-  .auth-links {
-    margin-top: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 20px;
-    border-top: 1px solid #e2e8f0;
+  .success-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: #dcfce7;
+    border-radius: 8px;
+    border: 1px solid #86efac;
+    color: #15803d;
+    font-size: 13px;
+    font-weight: 600;
   }
   .auth-link {
-    font-size: 14px;
-    color: #667eea;
+    display: inline-block;
+    color: #16a34a;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
     transition: all 0.2s ease;
+    border: none;
+    background: none;
+    padding: 0;
   }
   .auth-link:hover {
-    color: #764ba2;
-    text-decoration: underline;
+    color: #155e3d;
+  }
+  .auth-links {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: #475569;
+    padding-top: 20px;
+    border-top: 1.5px solid #e5e7eb;
+  }
+  .auth-links a {
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 4px;
+    transition: color 0.2s ease;
+  }
+  .auth-links a:hover {
+    color: #155e3d;
   }
   .form-title {
-    font-size: 24px;
+    font-size: 32px;
     font-weight: 700;
-    color: #1e293b;
-    margin: 0 0 8px 0;
+    color: #0f172a;
+    margin: 0 0 12px 0;
     text-align: center;
+    letter-spacing: -0.5px;
   }
   .form-subtitle {
-    font-size: 14px;
-    color: #64748b;
+    font-size: 15px;
+    color: #475569;
     text-align: center;
-    margin: 0 0 28px 0;
+    margin: 0 0 32px 0;
+    font-weight: 400;
+    letter-spacing: 0.2px;
   }
   .back-link {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: 14px;
-    color: #667eea;
+    gap: 8px;
+    font-size: 13px;
+    color: #16a34a;
     text-decoration: none;
     font-weight: 600;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     transition: all 0.2s ease;
   }
   .back-link:hover {
-    color: #764ba2;
-    transform: translateX(-4px);
+    color: #155e3d;
+    transform: translateX(-3px);
+  }
+  .back-link svg {
+    transition: transform 0.2s ease;
+  }
+  .back-link:hover svg {
+    transform: translateX(-2px);
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .login-card {
+    animation: fadeIn 0.4s ease-out;
+  }
+  .demo-box {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+  }
+  .demo-box:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+  .demo-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .demo-icon {
+    width: 32px;
+    height: 32px;
+    background: #22c55e;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+    font-size: 16px;
+  }
+  .demo-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #e8f5e9;
+    letter-spacing: 0;
+  }
+  .demo-creds {
+    font-size: 12px;
+    line-height: 2;
+    color: #cbd5e1;
+    margin: 0;
+    font-weight: 400;
+  }
+  .demo-creds strong {
+    color: #e8f5e9;
+    font-weight: 700;
+  }
+  .error-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+    font-size: 13px;
+    font-weight: 600;
   }
   .success-msg {
     margin-top: 16px;
-    padding: 12px;
-    background: #d1fae5;
-    border-radius: 8px;
-    color: #059669;
-    font-size: 14px;
+    padding: 13px 15px;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(34, 197, 94, 0.5);
+    color: #86efac;
+    font-size: 13px;
     font-weight: 600;
-    text-align: center;
-    display: none;
   }
-  .success-msg.show {
-    display: block;
+  .auth-link {
+    display: inline-block;
+    color: #93c5fd;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  .auth-link:hover {
+    color: #bbf7d0;
+  }
+  .auth-links {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: #cbd5e1;
+    padding-top: 20px;
+    border-top: 1.5px solid rgba(255,255,255,0.1);
+  }
+  .auth-links a {
+    color: #93c5fd;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 4px;
+    transition: color 0.3s ease;
+  }
+  .auth-links a:hover {
+    color: #bbf7d0;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .login-card {
+    animation: fadeIn 0.4s ease-out;
+  }
+  .form-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 12px 0;
+    text-align: center;
+    letter-spacing: -0.5px;
+  }
+  .form-subtitle {
+    font-size: 15px;
+    color: #475569;
+    text-align: center;
+    margin: 0 0 32px 0;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 24px;
+    transition: all 0.2s ease;
+  }
+  .back-link:hover {
+    color: #155e3d;
+    transform: translateX(-3px);
+  }
+  .back-link svg {
+    transition: transform 0.2s ease;
+  }
+  .back-link:hover svg {
+    transform: translateX(-2px);
   }
   @media (max-width: 480px) {
     .login-card {
-      padding: 36px 28px;
+      padding: 40px 24px;
+      border-radius: 24px;
     }
-    .role-grid {
-      grid-template-columns: 1fr;
+    .login-logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      background: #22c55e;
+      box-shadow: none;
+    }
+    .login-title {
+      font-size: 32px;
+    }
+    .login-subtitle {
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .input-group {
+      margin-bottom: 20px;
+    }
+    .input-group input {
+      padding: 14px 16px;
+      font-size: 16px;
+    }
+    .login-btn {
+      padding: 16px;
+      font-size: 15px;
+      margin-top: 8px;
     }
     .demo-box {
-      padding: 16px;
-      margin-top: 24px;
+      padding: 18px;
+      margin-top: 28px;
+      border-radius: 14px;
     }
     .demo-creds {
       font-size: 12px;
-      line-height: 2;
+      line-height: 1.8;
     }
-    .demo-creds br {
-      display: block;
-      content: "";
-      margin: 2px 0;
+    .auth-links {
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 16px;
     }
-    .login-title {
-      font-size: 28px;
-    }
-    .login-subtitle {
+    .auth-link {
       font-size: 13px;
     }
+    .form-title {
+      font-size: 24px;
+    }
+    .form-subtitle {
+      font-size: 14px;
+    }
   }
-</style>
+  @media (min-width: 1200px) {
+    .login-card {
+      max-width: 520px;
+      padding: 64px 56px;
+    }
+  }
+ORPHAN_CSS_REMOVED-->
 </head>
-<body style="padding-left:0">
-<div class="login-container">
-  <div class="login-card">
-    <div class="login-logo">
-      <img src="assets/pics/logo.png" alt="LingapApu Logo">
+<body>
+<div class="login-wrapper">
+
+  <!-- ── Left branding panel ── -->
+  <div class="brand-panel">
+    <div class="brand-logo-wrap">
+      <div class="brand-logo-icon">
+        <img src="assets/pics/logo.png" alt="LingapApu">
+      </div>
+      <div>
+        <div class="brand-logo-text">LingapApu</div>
+        <div class="brand-logo-sub">Floridablanca, Pampanga</div>
+      </div>
     </div>
-    <h1 class="login-title">LingapApu</h1>
-    <p class="login-subtitle">Senior Citizen Management System</p>
+
+    <h2 class="brand-headline">Caring for our<br>Senior Citizens</h2>
+    <p class="brand-tagline">A unified system for managing senior citizen benefits, IDs, transactions, and welfare services.</p>
+
+    <div class="brand-features">
+      <div class="brand-feature">
+        <div class="brand-feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="brand-feature-text">
+          <strong>Senior Citizen Registry</strong>
+          <span>Manage profiles, IDs, and complete senior citizen records</span>
+        </div>
+      </div>
+      <div class="brand-feature">
+        <div class="brand-feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="brand-feature-text">
+          <strong>Benefits Management</strong>
+          <span>Track and distribute social welfare benefits seamlessly</span>
+        </div>
+      </div>
+      <div class="brand-feature">
+        <div class="brand-feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15" x2="13" y2="15"/></svg>
+        </div>
+        <div class="brand-feature-text">
+          <strong>QR-Verified Transactions</strong>
+          <span>Secure merchant discount verification via QR scanning</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="brand-footer">© 2026 LingapApu &mdash; MSWD Floridablanca</div>
+  </div>
+
+  <!-- ── Right form panel ── -->
+  <div class="form-panel">
+    <div class="login-card">
+
+      <!-- Card logo shown on mobile only -->
+      <div class="card-logo">
+        <img src="assets/pics/logo.png" alt="LingapApu">
+      </div>
+
+      <h1 class="login-title">Welcome back</h1>
+      <p class="login-subtitle">Sign in to your LingapApu account</p>
     
     <!-- Login Form -->
     <form id="loginForm" style="display:block">
@@ -352,9 +1210,12 @@
         <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
       </div>
       
-      <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
+      <button type="submit" class="login-btn" id="loginBtn">
+          Sign In
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
       
-      <div id="loginMsg" class="error-msg"></div>
+      <div id="loginMsg" style="display: none;"></div>
       
       <div class="auth-links">
         <a href="#" class="auth-link" onclick="showSignupForm(); return false;">Senior Signup</a>
@@ -372,67 +1233,166 @@
         </div>
         <p class="demo-creds">
           <strong>Admin:</strong> admin / 1234<br>
-          <strong>OSCA/MSWD:</strong> osca / 1234<br>
+          <strong>OSCA Staff:</strong> osca / 1234<br>
           <strong>Merchant:</strong> merchant / 1234<br>
-          <strong>Senior:</strong> sofia / 1234 (Sofia Delgado)<br>
-          <strong>Senior:</strong> miguel / 1234 (Miguel Fernandez)<br>
-          <strong>Senior:</strong> rosa / 1234 (Rosa Garcia)
+          <strong>Senior:</strong> sofia / 1234
         </p>
       </div>
     </form>
 
     <!-- Signup Form -->
     <form id="signupForm" style="display:none">
-      <a href="#" class="back-link" onclick="showLoginForm(); return false;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
-        </svg>
-        Back to Login
-      </a>
-      
-      <h2 class="form-title">Senior Citizen Registration</h2>
-      <p class="form-subtitle">Create your account to access benefits</p>
-      
-      <div class="input-group">
-        <label>Full Name</label>
-        <input id="signupName" type="text" placeholder="Juan Dela Cruz" required>
+
+      <!-- ── Step indicator ── -->
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:20px">
+        <div id="signupStepDot1" style="width:28px;height:28px;border-radius:50%;background:#22c55e;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+        <div id="signupStepBar" style="flex:1;height:3px;background:#e2e8f0;position:relative;margin:0 4px">
+          <div id="signupStepBarFill" style="position:absolute;left:0;top:0;height:100%;width:0%;background:#22c55e;transition:width 0.3s"></div>
+        </div>
+        <div id="signupStepDot2" style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
       </div>
-      
-      <div class="input-group">
-        <label>Birth Date</label>
-        <input id="signupBirth" type="date" required>
+
+      <!-- ── STEP 1: Personal Info ── -->
+      <div id="signupStep1">
+        <a href="#" class="back-link" onclick="showLoginForm(); return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to Login
+        </a>
+
+        <h2 class="form-title">Personal Information</h2>
+        <p class="form-subtitle">Step 1 of 2 &mdash; Basic details</p>
+
+        <div class="input-group">
+          <label>Full Name</label>
+          <input id="signupName" type="text" placeholder="Juan Dela Cruz" required>
+        </div>
+
+        <div class="input-group">
+          <label>Birth Date</label>
+          <input id="signupBirth" type="date" required>
+        </div>
+
+        <div class="input-group">
+          <label>Contact Number</label>
+          <input id="signupContact" type="tel" placeholder="09XX XXX XXXX" required>
+        </div>
+
+        <div class="input-group">
+          <label>Address</label>
+          <input id="signupAddress" type="text" placeholder="Complete address" required>
+        </div>
+
+        <div id="signupStep1Msg" class="error-msg" style="display:none"></div>
+
+        <button type="button" class="login-btn" onclick="signupNextStep()">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
       </div>
-      
-      <div class="input-group">
-        <label>Contact Number</label>
-        <input id="signupContact" type="tel" placeholder="09XX XXX XXXX" required>
+
+      <!-- ── STEP 2: Account & Photo ── -->
+      <div id="signupStep2" style="display:none">
+        <a href="#" class="back-link" onclick="signupPrevStep(); return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </a>
+
+        <h2 class="form-title">Account &amp; Photo</h2>
+        <p class="form-subtitle">Step 2 of 2 &mdash; Login credentials &amp; ID photo</p>
+
+        <div class="input-group">
+          <label>Username</label>
+          <input id="signupUsername" type="text" placeholder="Choose a username" autocomplete="username" required>
+        </div>
+
+        <div class="input-group">
+          <label>Password</label>
+          <input id="signupPassword" type="password" placeholder="••••••••" autocomplete="new-password" required>
+          <small style="color:#64748b;font-size:12px;margin-top:4px;display:block">Minimum 4 characters</small>
+        </div>
+
+        <div class="input-group">
+          <label>Confirm Password</label>
+          <input id="signupConfirmPassword" type="password" placeholder="••••••••" autocomplete="new-password" required>
+        </div>
+
+        <div class="input-group">
+          <label>ID Photo (Camera Required)</label>
+          <p style="margin:0 0 12px;font-size:12px;color:#64748b;line-height:1.6">
+            <strong style="color:#334155">Guide for taking a proper ID photo:</strong><br>
+            ✓ Face must be clear and straight<br>
+            ✓ Look directly at camera<br>
+            ✓ Good lighting (avoid shadows)<br>
+            ✓ No sunglasses or hats<br>
+            ✓ Plain background preferred
+          </p>
+
+          <div id="cameraContainer" style="position:relative;border-radius:8px;overflow:hidden;background:#000;margin-bottom:12px;aspect-ratio:9/12">
+            <video id="signupCameraVideo" autoplay muted playsinline style="width:100%;height:100%;display:none;background:#000;object-fit:cover"></video>
+
+            <!-- Start Camera Button -->
+            <div id="cameraStartButton" style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:#ffffff">
+              <button type="button" onclick="initializeCamera()" style="background:#22c55e;color:#fff;border:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.2s ease;display:flex;align-items:center;gap:10px" onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="3.5"/><path d="M12 4c4.418 0 8 1.79 8 4v8c0 2.21-3.582 4-8 4s-8-1.79-8-4V8c0-2.21 3.582-4 8-4m0-2C6.477 2 2 4.686 2 8v8c0 3.314 4.477 6 10 6s10-2.686 10-6V8c0-3.314-4.477-6-10-6z"/>
+                </svg>
+                Start Camera
+              </button>
+            </div>
+
+            <!-- Camera Guide Overlay -->
+            <div id="cameraGuideOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;display:none">
+              <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 400 533" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                  <mask id="faceMask">
+                    <rect width="400" height="533" fill="white"/>
+                    <ellipse cx="200" cy="220" rx="140" ry="170" fill="black"/>
+                  </mask>
+                </defs>
+                <rect width="400" height="533" fill="rgba(0,0,0,0.4)" mask="url(#faceMask)"/>
+                <ellipse cx="200" cy="220" rx="140" ry="170" fill="none" stroke="#667eea" stroke-width="2" stroke-dasharray="5,5" opacity="0.8"/>
+                <line x1="200" y1="50" x2="200" y2="490" stroke="#667eea" stroke-width="1" opacity="0.5" stroke-dasharray="3,3"/>
+                <line x1="60" y1="220" x2="340" y2="220" stroke="#667eea" stroke-width="1" opacity="0.5" stroke-dasharray="3,3"/>
+                <circle cx="170" cy="140" r="15" fill="none" stroke="#10b981" stroke-width="2" opacity="0.6"/>
+                <circle cx="230" cy="140" r="15" fill="none" stroke="#10b981" stroke-width="2" opacity="0.6"/>
+                <text x="200" y="480" font-size="14" font-weight="bold" fill="#10b981" text-anchor="middle" opacity="0.9">Position face in oval frame</text>
+              </svg>
+              <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);padding:20px 16px 12px;color:#fff;font-size:12px;text-align:center">
+                <div id="cameraHint" style="color:#10b981;font-weight:600;margin-bottom:4px">Center your face</div>
+                <div style="color:#cbd5e1;font-size:11px;line-height:1.4">📸 Look straight at camera • Ensure face is well-lit</div>
+              </div>
+            </div>
+
+            <div id="cameraNotSupported" style="display:none;padding:40px 20px;text-align:center;background:#fef2f2;border-radius:12px;border:2px solid #fca5a5;position:absolute;top:0;left:0;right:0;bottom:0;flex-direction:column;align-items:center;justify-content:center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" style="margin:0 auto 12px;display:block"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p style="margin:0;font-size:14px;color:#991b1b;font-weight:600">Camera not available</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#7f1d1d">Please enable camera access or use a device with a camera</p>
+            </div>
+
+            <div id="photoPreview" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;text-align:center;padding:12px;background:#fff;border-radius:12px;flex-direction:column;align-items:center;justify-content:center">
+              <canvas id="capturedPhotoCanvas" style="width:100%;aspect-ratio:1;border-radius:8px;object-fit:contain;background:#f8fafc"></canvas>
+              <p style="margin:12px 0 0;font-size:12px;color:#64748b">Photo captured</p>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button type="button" id="capturePhotoBtn" class="btn" style="flex:1;display:none" onclick="capturePhoto()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="12" r="8"/></svg>
+              Capture Photo
+            </button>
+            <button type="button" id="retakePhotoBtn" class="btn ghost" style="flex:1;display:none" onclick="retakePhoto()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Retake
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="login-btn">Submit Registration</button>
+
+        <div id="signupMsg" class="error-msg" style="display:none"></div>
+        <div id="signupSuccess" class="success-msg" style="display:none"></div>
       </div>
-      
-      <div class="input-group">
-        <label>Address</label>
-        <input id="signupAddress" type="text" placeholder="Complete address" required>
-      </div>
-      
-      <div class="input-group">
-        <label>Username</label>
-        <input id="signupUsername" type="text" placeholder="Choose a username" autocomplete="username" required>
-      </div>
-      
-      <div class="input-group">
-        <label>Password</label>
-        <input id="signupPassword" type="password" placeholder="••••••••" autocomplete="new-password" required>
-        <small style="color: #64748b; font-size: 12px; margin-top: 4px; display: block;">Minimum 4 characters</small>
-      </div>
-      
-      <div class="input-group">
-        <label>Confirm Password</label>
-        <input id="signupConfirmPassword" type="password" placeholder="••••••••" autocomplete="new-password" required>
-      </div>
-      
-      <button type="submit" class="login-btn">Submit Registration</button>
-      
-      <div id="signupMsg" class="error-msg"></div>
-      <div id="signupSuccess" class="success-msg"></div>
+
     </form>
 
     <!-- Forgot Password Form -->
@@ -471,11 +1431,13 @@
       
       <button type="submit" class="login-btn" id="forgotBtn">Reset Password</button>
       
-      <div id="forgotMsg" class="error-msg"></div>
-      <div id="forgotSuccess" class="success-msg"></div>
+      <div id="forgotMsg" class="error-msg" style="display:none"></div>
+      <div id="forgotSuccess" class="success-msg" style="display:none"></div>
     </form>
-  </div>
-</div>
+
+    </div><!-- /.login-card -->
+  </div><!-- /.form-panel -->
+</div><!-- /.login-wrapper -->
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
@@ -490,6 +1452,14 @@
     document.getElementById('loginForm').style.display = 'block';
     document.getElementById('signupForm').style.display = 'none';
     document.getElementById('forgotPasswordForm').style.display = 'none';
+    
+    // Stop camera stream and face detection
+    stopFaceDetection();
+    if (cameraVideo && cameraVideo.srcObject) {
+      cameraVideo.srcObject.getTracks().forEach(track => track.stop());
+      cameraVideo.srcObject = null;
+    }
+    
     clearMessages();
   }
 
@@ -497,7 +1467,59 @@
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('signupForm').style.display = 'block';
     document.getElementById('forgotPasswordForm').style.display = 'none';
+    // Always reset to step 1
+    _setSignupStep(1);
     clearMessages();
+  }
+
+  function _setSignupStep(step) {
+    const s1 = document.getElementById('signupStep1');
+    const s2 = document.getElementById('signupStep2');
+    const dot1 = document.getElementById('signupStepDot1');
+    const dot2 = document.getElementById('signupStepDot2');
+    const bar  = document.getElementById('signupStepBarFill');
+    if (!s1 || !s2) return;
+    if (step === 1) {
+      s1.style.display = 'block';
+      s2.style.display = 'none';
+      dot1.style.background = '#22c55e'; dot1.style.color = '#fff';
+      dot2.style.background = '#e2e8f0'; dot2.style.color = '#94a3b8';
+      if (bar) bar.style.width = '0%';
+    } else {
+      s1.style.display = 'none';
+      s2.style.display = 'block';
+      dot1.style.background = '#22c55e'; dot1.style.color = '#fff';
+      dot2.style.background = '#22c55e'; dot2.style.color = '#fff';
+      if (bar) bar.style.width = '100%';
+    }
+  }
+
+  function signupNextStep() {
+    const name    = document.getElementById('signupName').value.trim();
+    const birth   = document.getElementById('signupBirth').value;
+    const contact = document.getElementById('signupContact').value.trim();
+    const address = document.getElementById('signupAddress').value.trim();
+    const msgEl   = document.getElementById('signupStep1Msg');
+
+    msgEl.style.display = 'none';
+    msgEl.textContent = '';
+
+    if (!name || !birth || !contact || !address) {
+      msgEl.textContent = 'Please fill in all fields.';
+      msgEl.style.display = 'block';
+      return;
+    }
+    const age = calculateAge(birth);
+    if (age < 60) {
+      msgEl.textContent = 'You must be 60 years or older to register.';
+      msgEl.style.display = 'block';
+      return;
+    }
+    _setSignupStep(2);
+  }
+
+  function signupPrevStep() {
+    _setSignupStep(1);
   }
 
   function showForgotPasswordForm() {
@@ -510,21 +1532,32 @@
     document.getElementById('confirmPasswordGroup').style.display = 'none';
     document.getElementById('forgotBtn').textContent = 'Send Verification Code';
     document.getElementById('forgotPasswordForm').reset();
+    
+    // Stop face detection
+    stopFaceDetection();
+    if (cameraVideo && cameraVideo.srcObject) {
+      cameraVideo.srcObject.getTracks().forEach(track => track.stop());
+      cameraVideo.srcObject = null;
+    }
     clearMessages();
   }
 
   function clearMessages() {
     document.getElementById('loginMsg').textContent = '';
-    document.getElementById('signupMsg').textContent = '';
-    document.getElementById('signupSuccess').textContent = '';
-    document.getElementById('forgotMsg').textContent = '';
-    document.getElementById('forgotSuccess').textContent = '';
+    const _sm = document.getElementById('signupMsg');
+    _sm.textContent = ''; _sm.style.display = 'none';
+    const _ss = document.getElementById('signupSuccess');
+    _ss.textContent = ''; _ss.style.display = 'none';
+    document.getElementById('forgotMsg').textContent = ''; document.getElementById('forgotMsg').style.display = 'none';
+    document.getElementById('forgotSuccess').textContent = ''; document.getElementById('forgotSuccess').style.display = 'none';
   }
 
   // Calculate age from birth date
   function calculateAge(birthDate) {
+    if (!birthDate) return 0;
+    const parts = String(birthDate).split('-');
+    const birth = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
     const today = new Date();
-    const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
@@ -547,32 +1580,248 @@
     return newId;
   }
 
+  // Photo upload handling in signup form
+  let capturedPhotoBase64 = null;
+  const cameraVideo = document.getElementById('signupCameraVideo');
+  const captureBtn = document.getElementById('capturePhotoBtn');
+  const retakeBtn = document.getElementById('retakePhotoBtn');
+  const cameraContainer = document.getElementById('cameraContainer');
+  const cameraNotSupported = document.getElementById('cameraNotSupported');
+  const photoPreview = document.getElementById('photoPreview');
+  const capturedCanvas = document.getElementById('capturedPhotoCanvas');
+  const cameraHint = document.getElementById('cameraHint');
+  
+  let faceDetector = null;
+  let detectionActive = false;
+  let correctPositionFrames = 0;
+  const CORRECT_POSITION_THRESHOLD = 30; // frames needed to confirm correct position
+  
+  // Initialize camera when signup form is shown
+  window.initializeCamera = function() {
+    console.log('Camera initialization started...');
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ 
+        video: true,
+        audio: false 
+      })
+      .then(stream => {
+        console.log('Camera stream obtained successfully');
+        cameraVideo.srcObject = stream;
+        cameraVideo.play().then(() => {
+          console.log('Video playback started');
+        }).catch(err => {
+          console.error('Video play failed:', err);
+        });
+        cameraVideo.style.display = 'block';
+        document.getElementById('cameraStartButton').style.display = 'none';
+        document.getElementById('cameraGuideOverlay').style.display = 'block';
+        cameraNotSupported.style.display = 'none';
+        captureBtn.style.display = 'block';
+        
+        // Initialize face detection if available
+        if (typeof ml5 !== 'undefined' && ml5.faceDetection) {
+          try {
+            faceDetector = ml5.faceDetection('cocossd', cameraVideo, modelReady);
+          } catch (err) {
+            console.warn('Face detection not available, camera will work without auto-capture:', err);
+            detectionActive = false;
+            cameraHint.textContent = 'Click "Capture Photo" when ready';
+            cameraHint.style.color = '#667eea';
+          }
+        } else {
+          console.warn('ml5.js not loaded, face detection disabled');
+          detectionActive = false;
+          cameraHint.textContent = 'Click "Capture Photo" when ready';
+          cameraHint.style.color = '#667eea';
+        }
+      })
+      .catch(err => {
+        console.error('Camera access error:', err);
+        cameraVideo.style.display = 'none';
+        document.getElementById('cameraStartButton').style.display = 'flex';
+        cameraNotSupported.style.display = 'flex';
+        captureBtn.style.display = 'none';
+      });
+    } else {
+      console.error('getUserMedia not supported');
+      cameraVideo.style.display = 'none';
+      document.getElementById('cameraStartButton').style.display = 'flex';
+      cameraNotSupported.style.display = 'flex';
+      captureBtn.style.display = 'none';
+    }
+  }
+  
+  function modelReady() {
+    detectionActive = true;
+    detectFace();
+  }
+  
+  function detectFace() {
+    if (!detectionActive || !faceDetector) return;
+    
+    faceDetector.detect(cameraVideo, (err, results) => {
+      if (err) {
+        console.error('Face detection error:', err);
+        correctPositionFrames = 0;
+        cameraHint.textContent = 'Position face in oval frame';
+      } else if (results && results.length > 0) {
+        const detection = results[0];
+        const bbox = detection.bbox;
+        
+        // Get video dimensions
+        const videoWidth = cameraVideo.videoWidth;
+        const videoHeight = cameraVideo.videoHeight;
+        
+        // Normalize bbox to 0-1 range
+        const centerX = (bbox[0] + bbox[2] / 2) / videoWidth;
+        const centerY = (bbox[1] + bbox[3] / 2) / videoHeight;
+        const faceWidth = bbox[2] / videoWidth;
+        const faceHeight = bbox[3] / videoHeight;
+        
+        // Check if face is within guide frame (9:12 aspect ratio, centered)
+        // Guide frame: ellipse centered at 0.5, 0.41, rx=0.35, ry=0.32
+        const frameWidth = 0.35;
+        const frameHeight = 0.32;
+        const frameCenterX = 0.5;
+        const frameCenterY = 0.41;
+        
+        // Check if face center is within ellipse bounds with some tolerance
+        const dx = (centerX - frameCenterX) / frameWidth;
+        const dy = (centerY - frameCenterY) / frameHeight;
+        const ellipseDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Check if face size is appropriate
+        const faceSizeOk = faceWidth > 0.2 && faceWidth < 0.6;
+        const positionOk = ellipseDistance < 0.85;
+        
+        if (positionOk && faceSizeOk) {
+          correctPositionFrames++;
+          if (correctPositionFrames < CORRECT_POSITION_THRESHOLD) {
+            cameraHint.textContent = `✓ Perfect! (${correctPositionFrames}/${CORRECT_POSITION_THRESHOLD})`;
+            cameraHint.style.color = '#10b981';
+          } else {
+            // Auto-capture when positioned correctly
+            capturePhoto();
+            detectionActive = false;
+            return;
+          }
+        } else {
+          correctPositionFrames = 0;
+          if (!positionOk) {
+            cameraHint.textContent = 'Center face in frame';
+          } else if (!faceSizeOk) {
+            if (faceWidth < 0.2) {
+              cameraHint.textContent = 'Move closer to camera';
+            } else {
+              cameraHint.textContent = 'Move farther from camera';
+            }
+          }
+          cameraHint.style.color = '#fbbf24';
+        }
+      } else {
+        correctPositionFrames = 0;
+        cameraHint.textContent = 'No face detected';
+        cameraHint.style.color = '#ef4444';
+      }
+      
+      // Continue detection
+      detectFace();
+    });
+  }
+  
+  function stopFaceDetection() {
+    detectionActive = false;
+  }
+  
+  // Capture photo from camera
+  window.capturePhoto = function() {
+    const canvas = document.createElement('canvas');
+    const size = Math.min(cameraVideo.videoWidth, cameraVideo.videoHeight);
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    
+    // Center crop
+    const offsetX = (cameraVideo.videoWidth - size) / 2;
+    const offsetY = (cameraVideo.videoHeight - size) / 2;
+    ctx.drawImage(cameraVideo, offsetX, offsetY, size, size, 0, 0, size, size);
+    
+    capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.9);
+    
+    // Set canvas display size and draw
+    capturedCanvas.width = size;
+    capturedCanvas.height = size;
+    capturedCanvas.getContext('2d').drawImage(canvas, 0, 0, size, size);
+    
+    // Hide camera, show preview
+    cameraVideo.style.display = 'none';
+    document.getElementById('cameraGuideOverlay').style.display = 'none';
+    photoPreview.style.display = 'flex';
+    captureBtn.style.display = 'none';
+    retakeBtn.style.display = 'block';
+  };
+  
+  // Retake photo
+  window.retakePhoto = function() {
+    capturedPhotoBase64 = null;
+    capturedCanvas.getContext('2d').clearRect(0, 0, capturedCanvas.width, capturedCanvas.height);
+    cameraVideo.style.display = 'block';
+    document.getElementById('cameraGuideOverlay').style.display = 'block';
+    photoPreview.style.display = 'none';
+    captureBtn.style.display = 'block';
+    retakeBtn.style.display = 'none';
+    correctPositionFrames = 0;
+    cameraHint.textContent = 'Position face in oval frame';
+    cameraHint.style.color = '#10b981';
+    detectionActive = true;
+    detectFace();
+  };
+  
+  // Initialize camera when showing signup form
+  const originalShowSignupForm = window.showSignupForm;
+  window.showSignupForm = function() {
+    originalShowSignupForm.call(this);
+    // Camera now starts only when user clicks the button
+  };
+
   // Signup form submission
-  document.getElementById('signupForm').addEventListener('submit', function(e) {
+  document.getElementById('signupForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const name = document.getElementById('signupName').value.trim();
     const birthDate = document.getElementById('signupBirth').value;
     const contact = document.getElementById('signupContact').value.trim();
     const address = document.getElementById('signupAddress').value.trim();
-    const username = document.getElementById('signupUsername').value.trim();
+    const username = document.getElementById('signupUsername').value.trim().toLowerCase();
     const password = document.getElementById('signupPassword').value;
     const confirmPassword = document.getElementById('signupConfirmPassword').value;
     
     const msgEl = document.getElementById('signupMsg');
     const successEl = document.getElementById('signupSuccess');
     msgEl.textContent = '';
+    msgEl.style.display = 'none';
     successEl.textContent = '';
+    successEl.style.display = 'none';
     
     // Validation
     if (!name || !birthDate || !contact || !address || !username || !password || !confirmPassword) {
       msgEl.textContent = 'All fields are required';
+      msgEl.style.display = 'block';
+      return;
+    }
+    
+    // Photo validation
+    if (!capturedPhotoBase64) {
+      msgEl.textContent = 'Please capture a photo';
+      msgEl.style.display = 'block';
       return;
     }
     
     // Password match validation
     if (password !== confirmPassword) {
       msgEl.textContent = 'Passwords do not match';
+      msgEl.style.display = 'block';
       return;
     }
     
@@ -580,12 +1829,14 @@
     const age = calculateAge(birthDate);
     if (age < 60) {
       msgEl.textContent = 'You must be 60 years or older to register';
+      msgEl.style.display = 'block';
       return;
     }
     
     // Password strength
     if (password.length < 4) {
       msgEl.textContent = 'Password must be at least 4 characters';
+      msgEl.style.display = 'block';
       return;
     }
     
@@ -594,14 +1845,15 @@
     const profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
     const pending = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
     
-    if (staff.some(s => s.username === username) || 
-        profiles.some(p => p.username === username) ||
-        pending.some(p => p.username === username)) {
+    if (staff.some(s => (s.username || '').toLowerCase() === username) || 
+        profiles.some(p => (p.username || '').toLowerCase() === username) ||
+        pending.some(p => (p.username || '').toLowerCase() === username)) {
       msgEl.textContent = 'Username already exists';
+      msgEl.style.display = 'block';
       return;
     }
     
-    // Create registration
+    // Create registration with captured photo
     const newRegistration = {
       id: generateSeniorId(),
       name: name,
@@ -614,18 +1866,40 @@
       benefits: [],
       registrationDate: new Date().toISOString(),
       status: 'pending',
-      gender: 'Not specified'
+      gender: 'Not specified',
+      photo: capturedPhotoBase64
     };
     
-    // Save to pending registrations
+    // Upload to Supabase first
+    const submitBtn = this.querySelector('button[type="submit"]') || document.querySelector('#signupForm button');
+    const originalBtnText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting\u2026'; }
+
+    if (window.db) {
+      const result = await window.db.addRegistration(newRegistration);
+      if (!result) {
+        msgEl.textContent = 'Failed to submit registration. Please check your connection and try again.';
+        msgEl.style.display = 'block';
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalBtnText; }
+        return;
+      }
+    }
+
+    // Save to local cache after successful DB upload
     pending.push(newRegistration);
     localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-    
+
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalBtnText; }
+
     // Show success
     successEl.textContent = 'Registration submitted successfully! Please wait for admin approval.';
+    successEl.style.display = 'block';
     
-    // Reset form
+    // Reset form and camera
     document.getElementById('signupForm').reset();
+    capturedPhotoBase64 = null;
+    document.getElementById('capturedPhotoCanvas').getContext('2d').clearRect(0, 0, 200, 250);
+    document.getElementById('photoPreview').style.display = 'none';
     
     // Return to login after 3 seconds
     setTimeout(() => {
@@ -654,10 +1928,13 @@
     const forgotBtn = document.getElementById('forgotBtn');
     
     msgEl.textContent = '';
+    msgEl.style.display = 'none';
     successEl.textContent = '';
+    successEl.style.display = 'none';
     
     if (!username) {
       msgEl.textContent = 'Please enter your mobile number';
+      msgEl.style.display = 'block';
       return;
     }
     
@@ -672,6 +1949,7 @@
       
       if (!userExists) {
         msgEl.textContent = 'Mobile number not found';
+        msgEl.style.display = 'block';
         return;
       }
       
@@ -687,30 +1965,36 @@
       document.getElementById('otpDisplay').textContent = 'Demo OTP: ' + generatedOTP;
       forgotBtn.textContent = 'Reset Password';
       successEl.textContent = 'Verification code sent! (Displayed above for demo)';
+      successEl.style.display = 'block';
       
     } else {
       // Step 2: Verify OTP and Update password
       if (!otpCode) {
         msgEl.textContent = 'Please enter the verification code';
+        msgEl.style.display = 'block';
         return;
       }
       
       if (otpCode !== generatedOTP) {
         msgEl.textContent = 'Invalid verification code';
+        msgEl.style.display = 'block';
         return;
       }
       if (!newPassword || !confirmPassword) {
         msgEl.textContent = 'Please fill in both password fields';
+        msgEl.style.display = 'block';
         return;
       }
       
       if (newPassword.length < 4) {
         msgEl.textContent = 'Password must be at least 4 characters';
+        msgEl.style.display = 'block';
         return;
       }
       
       if (newPassword !== confirmPassword) {
         msgEl.textContent = 'Passwords do not match';
+        msgEl.style.display = 'block';
         return;
       }
       
@@ -731,6 +2015,7 @@
       
       // Show success
       successEl.textContent = 'Password updated successfully! Redirecting to login...';
+      successEl.style.display = 'block';
       document.getElementById('forgotPasswordForm').reset();
       
       // Return to login after 2 seconds
@@ -740,18 +2025,23 @@
     }
   });
 
-  // Login form submit
+  // Login form submit — call handleLogin directly so we don't double-fire via loginBtn.click()
   document.getElementById('loginForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    // Check if loginBtn handler exists from script.js
-    const loginBtn = document.getElementById('loginBtn');
-    if(loginBtn) {
-      loginBtn.click();
-    } else {
-      console.error('loginBtn not found');
+    if (typeof handleLogin === 'function') {
+      handleLogin();
     }
   });
 </script>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/supabase-config.js"></script>
+<script src="assets/db.js"></script>
 <script src="assets/script.js"></script>
+
+
 </body>
 </html>
+
+
+

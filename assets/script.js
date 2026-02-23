@@ -250,8 +250,15 @@ function setupTransactionModal() {
     
     // Save updated profiles
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
-    
-    // Save to transactions store
+
+    // Save to Supabase
+    if (window.db) {
+      window.db.addTransaction(transaction).catch(e => console.error('[saveTransaction]', e));
+      // Also update the senior's profile in Supabase with latest transactions list
+      window.db.updateSenior(seniorId, { transactions: profiles[seniorIdx].transactions }).catch(() => {});
+    }
+
+    // Save to local transactions store
     const allTransactions = JSON.parse(localStorage.getItem('lingap_transactions') || '[]');
     allTransactions.unshift(transaction);
     localStorage.setItem('lingap_transactions', JSON.stringify(allTransactions));
@@ -646,6 +653,30 @@ const STORAGE_KEY = 'lingap_profiles_v3';
 const TRANSACTIONS_KEY = 'lingap_transactions';
 let profiles = [];
 
+// ---- Pagination State ----
+let filteredSeniorsCache = [], seniorsPage = 1;
+let filteredRegsCache    = [], regsPage    = 1;
+const SENIORS_PAGE_SIZE  = 10;
+const REGS_PAGE_SIZE     = 5;
+
+// Shared pagination renderer (admin side)
+function renderPagination(containerEl, page, totalPages, gotoFn) {
+  if (!containerEl) return;
+  containerEl.innerHTML = '';
+  if (totalPages <= 1) return;
+  const mkBtn = (html, p, disabled, active) =>
+    `<button onclick="${gotoFn}(${p})" ${disabled ? 'disabled' : ''} style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:36px;padding:0 10px;border-radius:8px;border:1px solid ${active ? '#22c55e' : 'var(--border)'};background:${active ? '#22c55e' : disabled ? '#f9fafb' : '#fff'};color:${active ? '#fff' : disabled ? '#9ca3af' : '#374151'};font-size:13px;font-weight:${active ? '700' : '500'};cursor:${disabled ? 'not-allowed' : 'pointer'}">${html}</button>`;
+  let nums = '', prev = 0;
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+      if (prev && i - prev > 1) nums += `<span style="padding:0 4px;color:#9ca3af">…</span>`;
+      nums += mkBtn(i, i, false, i === page);
+      prev = i;
+    }
+  }
+  containerEl.innerHTML = `<div style="display:flex;justify-content:center;align-items:center;gap:6px;padding-top:18px;flex-wrap:wrap">${mkBtn('&laquo; Prev', page - 1, page <= 1, false)}${nums}${mkBtn('Next &raquo;', page + 1, page >= totalPages, false)}</div>`;
+}
+
 // seed with 15 seniors and recent transactions
 function seedProfiles(){
   const now = new Date();
@@ -760,16 +791,56 @@ function seedTransactions() {
   localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(transactions));
 }
 
-function loadProfiles(){
+async function loadProfiles(){
+  if (window.db) {
+    try {
+      const rows = await window.db.getSeniors();
+      if (rows && rows.length > 0) {
+        // Also fetch all transactions so profile.transactions arrays are populated
+        let allTxns = [];
+        try { allTxns = await window.db.getTransactions(); } catch(_){}
+
+        // Normalise Supabase snake_case fields to the camelCase the UI expects
+        profiles = rows.map(r => {
+          const seniorTxns = allTxns
+            .filter(t => (t.senior_id || t.seniorId) === r.id)
+            .map(t => ({
+              ...t,
+              seniorId:   t.senior_id   || t.seniorId,
+              seniorName: t.senior_name || t.seniorName,
+              merchantId: t.merchant_id || t.merchantId,
+              scanDate:   t.scan_date   || t.scanDate
+            }));
+          return {
+            ...r,
+            registrationDate: r.registration_date || r.registrationDate || null,
+            benefits: Array.isArray(r.benefits) ? r.benefits : [],
+            transactions: seniorTxns.length > 0 ? seniorTxns : (r.transactions || [])
+          };
+        });
+        // Sync local cache so synchronous helpers still work
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+        if (allTxns.length) localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(allTxns));
+        console.log(`[loadProfiles] Loaded ${profiles.length} seniors + ${allTxns.length} transactions from Supabase`);
+        return;
+      }
+    } catch (e) {
+      console.warn('[loadProfiles] Supabase fetch failed, seeding from local data', e);
+    }
+  }
+  // Fallback: seed localStorage with demo data and upload to Supabase
   const raw = localStorage.getItem(STORAGE_KEY);
-  
-  // Force refresh - clear old data and reseed
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(TRANSACTIONS_KEY);
   localStorage.removeItem('lingap_benefits_v1');
   seedProfiles();
-  
   profiles = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  // Upload seed data to Supabase in the background
+  if (window.db) {
+    window.db.upsertSeniors(profiles).then(() => console.log('[loadProfiles] Seed data uploaded to Supabase'));
+    const txns = JSON.parse(localStorage.getItem(TRANSACTIONS_KEY) || '[]');
+    if (txns.length) window.db.upsertTransactions(txns).then(() => console.log('[loadProfiles] Seed transactions uploaded'));
+  }
 }
 
 function seedBenefits() {
@@ -1001,153 +1072,115 @@ function seedBenefits() {
 // ===== LOGIN =====
 function initLogin(){
   console.log('Initializing login...');
-  loadProfiles();
-  console.log('Profiles loaded:', profiles.length);
-  console.log('Sample profile IDs:', profiles.slice(0, 5).map(p => ({id: p.id, username: p.username})));
-  
-  document.getElementById('loginBtn').addEventListener('click', handleLogin);
-  
-  // Add Enter key support for login
-  const passwordInput = document.getElementById('password');
-  if(passwordInput) {
-    passwordInput.addEventListener('keypress', (e) => {
-      if(e.key === 'Enter') handleLogin();
-    });
-  }
-  
   sessionStorage.removeItem('lingap_user');
   sessionStorage.removeItem('currentUser');
+  // Login is driven by the form's submit event (registered in the inline script)
+  // and directly by handleLogin() — no extra click/keypress listeners needed here.
 }
-function handleLogin(){
+
+async function handleLogin(){
   const username = document.getElementById('username').value.trim().toLowerCase();
   const password = document.getElementById('password').value.trim();
-  
-  console.log('Login attempt:', username, '/', password);
-  console.log('Available DEMO_USERS:', DEMO_USERS);
-  
-  // Auto-detect role based on username
-  const user = DEMO_USERS.find(u=>u.username===username && u.password===password);
-  console.log('Found user:', user);
-  
-  const msg = document.getElementById('loginMsg');
-  if(!user){ 
-    msg.textContent='Invalid username or password.';
-    msg.classList.add('show');
-    return; 
-  }
-  msg.classList.remove('show');
-  
-  // For senior citizens, set session with their profile ID
-  if(user.role === 'senior') {
-    const session = {role: 'senior', username: user.username, id: user.id};
-    sessionStorage.setItem('currentUser', JSON.stringify(session));
-    console.log('Senior login session created:', session);
-    console.log('Redirecting to senior.html...');
-    window.location.href='senior.html';
-  } else if(user.role === 'merchant') {
-    const session = {role: 'merchant', username: user.username};
-    sessionStorage.setItem('currentUser', JSON.stringify(session));
-    console.log('Merchant login session created:', session);
-    window.location.href='merchant.html';
-  } else if(user.role === 'osca') {
-    const session = {role: 'osca', username: user.username};
-    sessionStorage.setItem('currentUser', JSON.stringify(session));
-    console.log('OSCA login session created:', session);
-    window.location.href='osca.html';
-  } else if(user.role === 'admin') {
-    const session = {role: 'admin', username: user.username};
-    sessionStorage.setItem('currentUser', JSON.stringify(session));
-    window.location.href='admin.html';
-  } else {
-    const session = {role:user.role, username:user.username, seniorId:user.id||null};
-    sessionStorage.setItem('lingap_user', JSON.stringify(session));
-    window.location.href='senior.html';
+  const msg      = document.getElementById('loginMsg');
+
+  msg.style.display = 'none';
+
+  // Disable button + show loading
+  const btn = document.getElementById('loginBtn');
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+
+  try {
+    // 1. Try Supabase users table
+    let user = null;
+    if (window.db) {
+      user = await window.db.login(username, password);
+    }
+
+    // 2. Fallback to hardcoded DEMO_USERS (offline / development)
+    if (!user) {
+      const demo = DEMO_USERS.find(u => u.username === username && u.password === password);
+      if (demo) user = demo;
+    }
+
+    if (!user) {
+      // Check if this username is a pending/rejected registration
+      let pendingStatus = null;
+      if (window.db) {
+        const pr = await window.db.checkPendingUsername(username);
+        if (pr) pendingStatus = pr.status;
+      }
+      if (pendingStatus === 'pending') {
+        msg.textContent = 'Your account is awaiting admin approval. Please wait for confirmation before logging in.';
+      } else if (pendingStatus === 'rejected') {
+        msg.textContent = 'Your registration was not approved. Please contact the OSCA office for assistance.';
+      } else {
+        msg.textContent = 'Invalid username or password.';
+      }
+      msg.style.display = 'block';
+      msg.className = 'error-msg';
+      return;
+    }
+
+    // 3. Build session and redirect
+    const role = user.role;
+    if (role === 'senior') {
+      // For senior: senior_id (Supabase) or id (DEMO_USERS fallback)
+      const seniorId = user.senior_id || user.id || null;
+      sessionStorage.setItem('currentUser', JSON.stringify({ role: 'senior', username, id: seniorId }));
+      window.location.href = 'senior.html';
+    } else if (role === 'merchant') {
+      sessionStorage.setItem('currentUser', JSON.stringify({ role: 'merchant', username, id: user.id || null }));
+      window.location.href = 'merchant.html';
+    } else if (role === 'osca') {
+      sessionStorage.setItem('currentUser', JSON.stringify({ role: 'osca', username, id: user.id || null }));
+      window.location.href = 'osca.html';
+    } else if (role === 'admin') {
+      sessionStorage.setItem('currentUser', JSON.stringify({ role: 'admin', username, id: user.id || null }));
+      window.location.href = 'admin.html';
+    } else {
+      sessionStorage.setItem('lingap_user', JSON.stringify({ role, username, seniorId: user.senior_id || user.id || null }));
+      window.location.href = 'senior.html';
+    }
+  } catch (e) {
+    console.error('[login]', e);
+    msg.textContent = 'Login error. Please try again.';
+    msg.style.display = 'block';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
   }
 }
 
 // ===== ADMIN =====
 let hq=null;
 
-// Mock pending registrations data
-const pendingRegistrations = [
-  {
-    id: 'SC-2025-001',
-    name: 'Maria Santos Cruz',
-    birth: '1955-03-15',
-    gender: 'Female',
-    contact: '0912-345-6789',
-    address: 'Brgy. San Jose, Floridablanca, Pampanga',
-    email: 'maria.cruz@email.com',
-    benefits: 'Pension, Medical',
-    documents: ['Valid ID', 'Birth Certificate', 'Proof of Residency'],
-    dateApplied: '2025-11-15',
-    status: 'pending'
-  },
-  {
-    id: 'SC-2025-002',
-    name: 'Roberto Diaz Reyes',
-    birth: '1952-08-22',
-    gender: 'Male',
-    contact: '0923-456-7890',
-    address: 'Brgy. Santa Rita, Floridablanca, Pampanga',
-    email: 'roberto.reyes@email.com',
-    benefits: 'Transport, Medical',
-    documents: ['Valid ID', 'Birth Certificate'],
-    dateApplied: '2025-11-16',
-    status: 'pending'
-  },
-  {
-    id: 'SC-2025-003',
-    name: 'Elena Flores Mendoza',
-    birth: '1958-12-05',
-    gender: 'Female',
-    contact: '0945-678-9012',
-    address: 'Brgy. Dela Paz, Floridablanca, Pampanga',
-    email: 'elena.mendoza@email.com',
-    benefits: 'Pension, Transport, Medical',
-    documents: ['Valid ID', 'Birth Certificate', 'Proof of Residency', 'Medical Records'],
-    dateApplied: '2025-11-17',
-    status: 'pending'
-  },
-  {
-    id: 'SC-2025-004',
-    name: 'Carlos Bautista Garcia',
-    birth: '1950-06-18',
-    gender: 'Male',
-    contact: '0918-234-5678',
-    address: 'Brgy. Mabical, Floridablanca, Pampanga',
-    email: 'carlos.garcia@email.com',
-    benefits: 'Pension, Medical',
-    documents: ['Valid ID', 'Birth Certificate', 'Medical Records'],
-    dateApplied: '2025-11-18',
-    status: 'pending'
-  },
-  {
-    id: 'SC-2025-005',
-    name: 'Teresita Reyes Santos',
-    birth: '1959-09-30',
-    gender: 'Female',
-    contact: '0927-890-1234',
-    address: 'Brgy. Cabetican, Floridablanca, Pampanga',
-    email: 'teresita.santos@email.com',
-    benefits: 'Medical, Transport',
-    documents: ['Valid ID', 'Birth Certificate', 'Proof of Residency'],
-    dateApplied: '2025-11-18',
-    status: 'pending'
-  }
+// Pending registrations – populated from Supabase at runtime
+let pendingRegistrations = [];
+
+// Fallback demo data used when Supabase returns no rows (development / offline)
+const DEMO_PENDING_REGISTRATIONS = [
+  { id:'SC-2025-001', name:'Maria Santos Cruz',    birth:'1955-03-15', gender:'Female', contact:'0912-345-6789', address:'Brgy. San Jose, Floridablanca, Pampanga',    email:'maria.cruz@email.com',  benefits:'Pension, Medical',          documents:['Valid ID','Birth Certificate','Proof of Residency'], dateApplied:'2025-11-15', status:'pending' },
+  { id:'SC-2025-002', name:'Roberto Diaz Reyes',   birth:'1952-08-22', gender:'Male',   contact:'0923-456-7890', address:'Brgy. Santa Rita, Floridablanca, Pampanga',  email:'roberto.reyes@email.com',benefits:'Transport, Medical',         documents:['Valid ID','Birth Certificate'],                       dateApplied:'2025-11-16', status:'pending' },
+  { id:'SC-2025-003', name:'Elena Flores Mendoza', birth:'1958-12-05', gender:'Female', contact:'0945-678-9012', address:'Brgy. Dela Paz, Floridablanca, Pampanga',   email:'elena.mendoza@email.com',benefits:'Pension, Transport, Medical', documents:['Valid ID','Birth Certificate','Proof of Residency','Medical Records'], dateApplied:'2025-11-17', status:'pending' },
+  { id:'SC-2025-004', name:'Carlos Bautista Garcia',birth:'1950-06-18', gender:'Male',   contact:'0918-234-5678', address:'Brgy. Mabical, Floridablanca, Pampanga',     email:'carlos.garcia@email.com',benefits:'Pension, Medical',          documents:['Valid ID','Birth Certificate','Medical Records'],     dateApplied:'2025-11-18', status:'pending' },
+  { id:'SC-2025-005', name:'Teresita Reyes Santos', birth:'1959-09-30', gender:'Female', contact:'0927-890-1234', address:'Brgy. Cabetican, Floridablanca, Pampanga',  email:'teresita.santos@email.com',benefits:'Medical, Transport',        documents:['Valid ID','Birth Certificate','Proof of Residency'],  dateApplied:'2025-11-18', status:'pending' }
 ];
 
 function initAdmin(){
   const s = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
   if(!s || s.role!=='admin'){ location.href='index.html'; return; }
-  loadProfiles(); 
-  filterSeniors(); // Use filterSeniors instead of refreshAdminTable to enable filtering
-  populateReports(); 
-  loadPendingRegistrations();
-  updateSeniorStats();
+  // Async load then render
+  (async () => {
+    await loadProfiles();
+    filterSeniors();
+    populateReports();
+    await loadPendingRegistrations();
+    updateSeniorStats();
+  })();
   
   // Admin panel buttons
-  document.getElementById('logoutBtn').addEventListener('click', ()=>{ sessionStorage.removeItem('currentUser'); location.href='index.html'; });
+  const logoutBtnEl = document.getElementById('logoutBtn') || document.getElementById('logoutBtnProfile');
+  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ sessionStorage.removeItem('currentUser'); location.href='index.html'; });
   
   const saveSeniorBtn = document.getElementById('saveSenior');
   if(saveSeniorBtn) {
@@ -1241,23 +1274,21 @@ function filterSeniors() {
   const filterGender = document.getElementById('filterGender');
   const filterBenefit = document.getElementById('filterBenefit');
   const sortSenior = document.getElementById('sortSenior');
-  
+
   const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
   const genderFilter = filterGender ? filterGender.value : '';
   const benefitFilter = filterBenefit ? filterBenefit.value : '';
   const sortBy = sortSenior ? sortSenior.value : 'name';
-  
+
   let filtered = profiles.filter(p => {
-    const matchesSearch = !searchTerm || 
-      p.name.toLowerCase().includes(searchTerm) || 
+    const matchesSearch = !searchTerm ||
+      p.name.toLowerCase().includes(searchTerm) ||
       p.id.toLowerCase().includes(searchTerm);
     const matchesGender = !genderFilter || p.gender === genderFilter;
     const matchesBenefit = !benefitFilter || (p.benefits && p.benefits.includes(benefitFilter));
-    
     return matchesSearch && matchesGender && matchesBenefit;
   });
-  
-  // Sort
+
   if(sortBy === 'name') {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
   } else if(sortBy === 'id') {
@@ -1267,13 +1298,30 @@ function filterSeniors() {
   } else if(sortBy === 'recent') {
     filtered.reverse();
   }
-  
-  // Render filtered results
+
+  filteredSeniorsCache = filtered;
+  seniorsPage = 1;
+  renderSeniorsPage();
+}
+
+function goToSeniorsPage(p) {
+  const totalPages = Math.max(1, Math.ceil(filteredSeniorsCache.length / SENIORS_PAGE_SIZE));
+  if (p < 1 || p > totalPages) return;
+  seniorsPage = p;
+  renderSeniorsPage();
+}
+
+function renderSeniorsPage() {
   const tbody = document.getElementById('seniorTable');
   if(!tbody) return;
   tbody.innerHTML = '';
-  
-  if (filtered.length === 0) {
+
+  const total = filteredSeniorsCache.length;
+  const totalPages = Math.max(1, Math.ceil(total / SENIORS_PAGE_SIZE));
+  const start = (seniorsPage - 1) * SENIORS_PAGE_SIZE;
+  const pageItems = filteredSeniorsCache.slice(start, start + SENIORS_PAGE_SIZE);
+
+  if (total === 0) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td colspan="9" style="text-align:center;padding:40px;color:var(--text-light)">
@@ -1287,14 +1335,14 @@ function filterSeniors() {
     `;
     tbody.appendChild(tr);
   } else {
-    filtered.forEach((p) => {
+    pageItems.forEach((p) => {
       const idx = profiles.indexOf(p);
       const age = p.birth ? calculateAge(p.birth) : 'N/A';
       const gender = p.gender || 'N/A';
       const contact = p.contact || p.phone || 'N/A';
       const address = p.address || 'N/A';
       const benefits = p.benefits || 'N/A';
-      
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${p.id}</td>
@@ -1332,112 +1380,175 @@ function filterSeniors() {
       tbody.appendChild(tr);
     });
   }
-  
+
   // Update showing count
   const showingEl = document.getElementById('showingCount');
   const totalCountEl = document.getElementById('totalCount');
-  if(showingEl) showingEl.textContent = filtered.length;
-  if(totalCountEl) totalCountEl.textContent = profiles.length;
+  if (showingEl) showingEl.textContent = total === 0 ? '0' : `${start + 1}–${Math.min(start + SENIORS_PAGE_SIZE, total)}`;
+  if (totalCountEl) totalCountEl.textContent = profiles.length;
+
+  renderPagination(document.getElementById('seniorsPagination'), seniorsPage, totalPages, 'goToSeniorsPage');
 }
 
-function loadPendingRegistrations() {
+async function loadPendingRegistrations() {
   console.log('loadPendingRegistrations called');
-  console.log('pendingRegistrations array:', pendingRegistrations);
-  
   const container = document.getElementById('pendingRegistrations');
-  console.log('Container found:', container);
-  
-  if(!container) {
-    console.error('pendingRegistrations container not found!');
-    return;
+  if (!container) { console.error('pendingRegistrations container not found!'); return; }
+
+  if (window.db) {
+    try {
+      const rows = await window.db.getPendingRegistrations('pending');
+      pendingRegistrations = rows.length > 0 ? rows.map(r => ({
+        id:          r.id,
+        name:        r.name,
+        age:         r.age,
+        birth:       r.birth       || r.birthday || null,
+        birthday:    r.birthday    || r.birth    || null,
+        gender:      r.gender,
+        contact:     r.contact,
+        address:     r.address,
+        email:       r.email       || '',
+        username:    r.username    || '',
+        password:    r.password    || '',
+        photo:       r.photo       || null,
+        benefits:    r.notes       || '',
+        dateApplied: r.date_applied || r.dateApplied,
+        status:      r.status,
+        documents:   []
+      })) : DEMO_PENDING_REGISTRATIONS;
+    } catch (e) {
+      console.warn('[loadPendingRegistrations] Supabase error, using demo data', e);
+      pendingRegistrations = DEMO_PENDING_REGISTRATIONS;
+    }
+  } else {
+    pendingRegistrations = DEMO_PENDING_REGISTRATIONS;
   }
-  
+
+  renderFilteredRegistrations(pendingRegistrations);
+  const countEl  = document.getElementById('pendingCount');
+  if (countEl)  countEl.textContent  = pendingRegistrations.length;
+  const countBar = document.getElementById('pendingCountBar');
+  if (countBar) countBar.textContent = pendingRegistrations.length;
+}
+
+function filterPendingRegistrations(query) {
+  const q = (query || '').toLowerCase().trim();
+  const filtered = q ? pendingRegistrations.filter(r =>
+    (r.name || '').toLowerCase().includes(q) || (r.id || '').toLowerCase().includes(q)
+  ) : pendingRegistrations;
+  renderFilteredRegistrations(filtered);
+}
+
+function renderFilteredRegistrations(list) {
+  filteredRegsCache = list;
+  regsPage = 1;
+  renderRegsPage();
+}
+
+function goToRegsPage(p) {
+  const totalPages = Math.max(1, Math.ceil(filteredRegsCache.length / REGS_PAGE_SIZE));
+  if (p < 1 || p > totalPages) return;
+  regsPage = p;
+  renderRegsPage();
+}
+
+function renderRegsPage() {
+  const container = document.getElementById('pendingRegistrations');
+  if(!container) return;
   container.innerHTML = '';
-  
-  if(pendingRegistrations.length === 0) {
+
+  const total = filteredRegsCache.length;
+  if(total === 0) {
     container.innerHTML = `
-      <div class="card" style="padding:40px;background:#f8fafc;border:2px dashed var(--border);text-align:center">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;color:var(--text-light)">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-        </svg>
-        <p style="margin:0;font-size:15px;color:var(--text-light)">No pending registrations</p>
-        <p class="small" style="margin-top:8px;color:var(--text-light)">New applications will appear here for review</p>
+      <div style="padding:56px 20px;background:#fff;border:1px solid var(--border);border-radius:8px;text-align:center">
+        <div style="width:64px;height:64px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <p style="margin:0;font-size:15px;font-weight:700;color:#374151">No pending registrations</p>
+        <p style="margin:6px 0 0;font-size:13px;color:#6b7280">New applications will appear here for review</p>
       </div>`;
     return;
   }
-  
-  pendingRegistrations.forEach((reg, idx) => {
+
+  const totalPages = Math.max(1, Math.ceil(total / REGS_PAGE_SIZE));
+  const start = (regsPage - 1) * REGS_PAGE_SIZE;
+  const pageItems = filteredRegsCache.slice(start, start + REGS_PAGE_SIZE);
+
+  pageItems.forEach((reg) => {
+    const realIdx = pendingRegistrations.indexOf(reg);
     const age = calculateAge(reg.birth);
+    const initials = (reg.name || '').split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
+    const avatarColors = ['#22c55e','#3b82f6','#8b5cf6','#f59e0b','#ec4899','#06b6d4'];
+    const avatarBg = avatarColors[realIdx % avatarColors.length];
+    const genderBg = (reg.gender||'').toLowerCase() === 'female' ? '#fdf2f8' : '#eff6ff';
+    const genderColor = (reg.gender||'').toLowerCase() === 'female' ? '#be185d' : '#1d4ed8';
+    const appliedDate = reg.dateApplied ? new Date(reg.dateApplied).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : '—';
+
     const card = document.createElement('div');
-    card.className = 'card';
-    card.style.cssText = 'border:2px solid var(--border);background:#fff;transition:all 0.2s';
+    card.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:8px;padding:20px;transition:box-shadow 0.2s';
+    card.onmouseover = () => card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.07)';
+    card.onmouseout  = () => card.style.boxShadow = 'none';
     card.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr auto;gap:24px">
-        <div>
-          <div style="display:flex;align-items:start;gap:16px;margin-bottom:16px">
-            <div style="width:60px;height:60px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-            </div>
-            <div style="flex:1">
-              <h4 style="margin:0;font-size:20px;font-weight:700;color:var(--text)">${reg.name}</h4>
-              <p class="small" style="margin:4px 0;color:var(--text-light)">ID: ${reg.id}</p>
-              <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
-                <span style="padding:4px 10px;background:var(--bg);border-radius:6px;font-size:12px;font-weight:600;color:var(--text-light)">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                  </svg>
-                  Age: ${age}
-                </span>
-                <span style="padding:4px 10px;background:${reg.gender === 'Female' ? 'linear-gradient(135deg,#ec4899,#db2777)' : 'linear-gradient(135deg,#06b6d4,#0891b2)'};border-radius:6px;font-size:12px;font-weight:600;color:#fff">
-                  ${reg.gender}
-                </span>
-                <span style="padding:4px 10px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:6px;font-size:12px;font-weight:600;color:#fff">
-                  Applied: ${new Date(reg.dateApplied).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
+      <div style="display:flex;gap:16px;align-items:start">
+        <!-- Avatar -->
+        <div style="width:52px;height:52px;background:${avatarBg};border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;flex-shrink:0;letter-spacing:-1px">${initials}</div>
+
+        <!-- Main info -->
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+            <h4 style="margin:0;font-size:16px;font-weight:800;color:#1f2937">${reg.name}</h4>
+            <span style="font-size:11px;font-weight:700;font-family:monospace;color:#6b7280;background:#f3f4f6;border-radius:4px;padding:2px 8px">${reg.id}</span>
           </div>
-          
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+
+          <!-- Tags -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#dcfce7;color:#15803d;border-radius:6px;font-size:12px;font-weight:700">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Age ${age}
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:${genderBg};color:${genderColor};border-radius:6px;font-size:12px;font-weight:700">
+              ${reg.gender || '—'}
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#fef3c7;color:#92400e;border-radius:6px;font-size:12px;font-weight:700">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Applied ${appliedDate}
+            </span>
+          </div>
+
+          <!-- Details grid -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:14px;background:#f9fafb;border-radius:8px;border:1px solid #f3f4f6">
             <div>
-              <div class="small" style="color:var(--text-light);margin-bottom:4px;font-weight:600">Contact</div>
-              <div style="font-size:14px">${reg.contact}</div>
-              <div style="font-size:13px;color:var(--text-light)">${reg.email}</div>
+              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Contact</div>
+              <div style="font-size:13px;font-weight:600;color:#374151">${reg.contact || '—'}</div>
+              ${reg.email ? `<div style="font-size:12px;color:#6b7280;margin-top:1px">${reg.email}</div>` : ''}
             </div>
             <div>
-              <div class="small" style="color:var(--text-light);margin-bottom:4px;font-weight:600">Address</div>
-              <div style="font-size:14px">${reg.address}</div>
+              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Address</div>
+              <div style="font-size:13px;font-weight:600;color:#374151">${reg.address || '—'}</div>
             </div>
             <div>
-              <div class="small" style="color:var(--text-light);margin-bottom:4px;font-weight:600">Requested Benefits</div>
-              <div style="font-size:14px">${reg.benefits}</div>
+              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Benefits Requested</div>
+              <div style="font-size:13px;font-weight:600;color:#374151">${reg.benefits || '—'}</div>
             </div>
             <div>
-              <div class="small" style="color:var(--text-light);margin-bottom:4px;font-weight:600">Documents Submitted</div>
-              <div style="font-size:13px">${reg.documents.join(', ')}</div>
+              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Documents</div>
+              <div style="font-size:12px;color:#374151">${(reg.documents||[]).join(', ') || '—'}</div>
             </div>
           </div>
         </div>
-        
-        <div style="display:flex;flex-direction:column;gap:8px;min-width:140px">
-          <button class="btn" onclick="approveRegistration(${idx})" style="white-space:nowrap">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
+
+        <!-- Action buttons -->
+        <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">
+          <button class="btn" onclick="approveRegistration(${realIdx})" style="white-space:nowrap;padding:8px 16px;font-size:13px;display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             Approve
           </button>
-          <button class="btn ghost" onclick="viewRegistrationDetails(${idx})" style="white-space:nowrap">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-            View Details
+          <button class="btn ghost" onclick="viewRegistrationDetails(${realIdx})" style="white-space:nowrap;padding:8px 16px;font-size:13px;display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            View
           </button>
-          <button class="btn ghost" onclick="rejectRegistration(${idx})" style="white-space:nowrap;color:#ef4444">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
+          <button class="btn ghost" onclick="rejectRegistration(${realIdx})" style="white-space:nowrap;padding:8px 16px;font-size:13px;color:#ef4444;border-color:#fca5a5;display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             Reject
           </button>
         </div>
@@ -1445,12 +1556,15 @@ function loadPendingRegistrations() {
     `;
     container.appendChild(card);
   });
-  
-  // Update pending count
+
+  // Update pending counts
   const countEl = document.getElementById('pendingCount');
   if(countEl) countEl.textContent = pendingRegistrations.length;
-}
+  const countBar = document.getElementById('pendingCountBar');
+  if(countBar) countBar.textContent = pendingRegistrations.length;
 
+  renderPagination(document.getElementById('regsPagination'), regsPage, totalPages, 'goToRegsPage');
+}
 function approveRegistration(idx) {
   // Handled by registration-modals.js
   openApproveRegistrationModal(idx);
@@ -1553,7 +1667,9 @@ function refreshAdminTable(){
 }
 
 function calculateAge(birthDate) {
-  const birth = new Date(birthDate);
+  if (!birthDate) return 0;
+  const parts = String(birthDate).split('-');
+  const birth = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
@@ -1647,9 +1763,18 @@ function saveSeniorFromForm(){
     console.log('Added new profile');
   }
   
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles)); 
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
   console.log('Saved to localStorage, total profiles:', profiles.length);
-  
+
+  // Persist to Supabase
+  if (window.db) {
+    if (isUpdate) {
+      window.db.updateSenior(id, rec).catch(e => console.error('[saveSenior]', e));
+    } else {
+      window.db.addSenior(rec).catch(e => console.error('[saveSenior]', e));
+    }
+  }
+
   alert(isUpdate ? 'Senior updated successfully!' : 'Senior saved successfully!');
   refreshAdminTable();
   clearSeniorForm();
@@ -1746,17 +1871,15 @@ const pendingTransactions = new Set(); // senior IDs with an open/pending transa
 
 // Check if senior was already scanned by current merchant today
 function wasSeniorScannedByMerchantToday(seniorId) {
-  const currentUser = JSON.parse(sessionStorage.getItem('lingap_user') || '{}');
-  const merchantId = currentUser.username || 'unknown';
-  const today = new Date().toLocaleDateString('en-US');
-  
+  const currentUser  = JSON.parse(sessionStorage.getItem('lingap_user') || '{}');
+  const merchantId   = currentUser.username || 'unknown';
+  const today        = new Date().toLocaleDateString('en-US');
+  // Check local cache first (fast path)
   const allTransactions = JSON.parse(localStorage.getItem('lingap_transactions') || '[]');
-  
-  // Check if there's any transaction for this senior by this merchant today
-  return allTransactions.some(txn => 
-    txn.seniorId === seniorId && 
-    txn.merchantId === merchantId && 
-    txn.scanDate === today
+  return allTransactions.some(txn =>
+    (txn.seniorId || txn.senior_id) === seniorId &&
+    (txn.merchantId || txn.merchant_id) === merchantId &&
+    (txn.scanDate   || txn.scan_date)   === today
   );
 }
 

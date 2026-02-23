@@ -204,10 +204,12 @@ function changePassword(event) {
     return;
   }
   
-  // In a real app, verify current password against server
-  // For demo, we'll just update it
-  // Note: In production, passwords should be hashed
-  
+  // Persist to Supabase
+  if (window.db) {
+    window.db.changePassword(session.id, newPassword)
+      .catch(e => console.error('[changePassword]', e));
+  }
+
   alert('Password updated successfully!');
   closeChangePasswordModal();
 }

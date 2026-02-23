@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>LingapApu — OSCA/MSWD Staff</title>
     <link rel="stylesheet" href="assets/style.css">
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/supabase-config.js"></script>
+    <script src="assets/db.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="assets/script.js"></script>
     <script>
@@ -193,17 +197,22 @@
     
     <!-- Verify QR Code Tab -->
     <div class="tab-panel active" id="verifyTab">
-      <div style="background:linear-gradient(135deg,#3b82f6,#2563eb);padding:40px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 24px rgba(59,130,246,0.3)">
+      <div style="background:#22c55e;padding:32px;border-radius:8px;margin-bottom:24px;border:1px solid var(--border)">
         <div style="text-align:center">
-          <h1 style="margin:0;color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px">Verify Senior Citizen QR Code</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px">Scan or upload QR code to verify senior citizen identity</p>
+          <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;letter-spacing:-0.5px\">Verify Senior Citizen QR Code</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:14px\">Scan or upload QR code to verify senior citizen identity</p>
         </div>
       </div>
 
       <div class="scanner-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
-        <div class="card" style="background:#fff;border:2px solid var(--border)">
-          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">QR Scanner</h3>
-          <div id="qr-reader-osca" style="position:relative;border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f8fafc;min-height:300px;display:flex;align-items:center;justify-content:center">
+        <div class="card" style="background:#fff;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">QR Scanner</h3>
+          </div>
+          <div id="qr-reader-osca" style="position:relative;border:1px dashed #22c55e;border-radius:8px;overflow:hidden;background:#f0fdf4;min-height:300px;display:flex;align-items:center;justify-content:center">
             <video id="qr-video-osca" style="width:100%;height:auto;display:none" playsinline></video>
             <canvas id="qr-canvas-osca" style="display:none"></canvas>
             <div id="scan-status-osca" style="position:absolute;bottom:12px;left:12px;right:12px;padding:12px;background:rgba(0,0,0,0.8);color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:600">Ready to scan</div>
@@ -232,8 +241,13 @@
           </label>
         </div>
 
-        <div class="card" style="background:#fff;border:2px solid var(--border)">
-          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Verification Result</h3>
+        <div class="card" style="background:#fff;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Verification Result</h3>
+          </div>
           <div id="verificationResult" style="text-align:center;padding:40px 20px">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;color:var(--text-light)">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/>
@@ -246,17 +260,22 @@
 
     <!-- Update Records Tab -->
     <div class="tab-panel" id="updateTab">
-      <div style="background:linear-gradient(135deg,#10b981,#059669);padding:40px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 24px rgba(16,185,129,0.3)">
+      <div style="background:#22c55e;padding:32px;border-radius:8px;margin-bottom:24px;border:1px solid var(--border)">
         <div style="text-align:center">
-          <h1 style="margin:0;color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px">Update Senior Citizen Records</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px">Search and update senior citizen information</p>
+          <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;letter-spacing:-0.5px">Update Senior Citizen Records</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:14px">Search and update senior citizen information</p>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:400px 1fr;gap:24px">
-        <div class="card" style="background:#fff;border:2px solid var(--border)">
-          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Scan Senior QR</h3>
-          <div id="qr-reader-update" style="position:relative;border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f8fafc;min-height:250px;display:flex;align-items:center;justify-content:center">
+        <div class="card" style="background:#fff;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Scan Senior QR</h3>
+          </div>
+          <div id="qr-reader-update" style="position:relative;border:1px dashed #22c55e;border-radius:8px;overflow:hidden;background:#f0fdf4;min-height:250px;display:flex;align-items:center;justify-content:center">
             <video id="qr-video-update" style="width:100%;height:auto;display:none" playsinline></video>
             <canvas id="qr-canvas-update" style="display:none"></canvas>
             <div id="scan-status-update" style="position:absolute;bottom:12px;left:12px;right:12px;padding:12px;background:rgba(0,0,0,0.8);color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:600">Ready to scan</div>
@@ -298,8 +317,13 @@
           <div id="searchResults" style="margin-top:16px;max-height:300px;overflow-y:auto"></div>
         </div>
 
-        <div class="card" style="background:#fff;border:2px solid var(--border)">
-          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Update Information</h3>
+        <div class="card" style="background:#fff;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Update Information</h3>
+          </div>
           <div id="updateForm" style="display:none">
             <div class="form-group">
               <label class="form-label">Senior ID</label>
@@ -356,17 +380,22 @@
 
     <!-- Log Transactions Tab -->
     <div class="tab-panel" id="transactionsTab">
-      <div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:40px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 24px rgba(245,158,11,0.3)">
+      <div style="background:#22c55e;padding:32px;border-radius:8px;margin-bottom:24px;border:1px solid var(--border)">
         <div style="text-align:center">
-          <h1 style="margin:0;color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px">Log Service or Discount Transaction</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px">Record senior citizen service usage or discount transactions</p>
+          <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;letter-spacing:-0.5px\">Log Service or Discount Transaction</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:14px\">Record senior citizen service usage or discount transactions</p>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:400px 1fr;gap:24px;margin-bottom:24px">
-        <div class="card" style="background:#fff;border:2px solid var(--border)">
-          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Scan Senior QR</h3>
-          <div id="qr-reader-transaction" style="position:relative;border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f8fafc;min-height:250px;display:flex;align-items:center;justify-content:center">
+        <div class="card" style="background:#fff;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Scan Senior QR</h3>
+          </div>
+          <div id="qr-reader-transaction" style="position:relative;border:1px dashed #22c55e;border-radius:8px;overflow:hidden;background:#f0fdf4;min-height:250px;display:flex;align-items:center;justify-content:center">
             <video id="qr-video-transaction" style="width:100%;height:auto;display:none" playsinline></video>
             <canvas id="qr-canvas-transaction" style="display:none"></canvas>
             <div id="scan-status-transaction" style="position:absolute;bottom:12px;left:12px;right:12px;padding:12px;background:rgba(0,0,0,0.8);color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:600">Ready to scan</div>
@@ -395,8 +424,13 @@
           </label>
         </div>
 
-        <div class="card" style="background:#fff;border:2px solid var(--border)">
-          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Selected Senior</h3>
+        <div class="card" style="background:#fff;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Selected Senior</h3>
+          </div>
           <div id="transactionSeniorInfo" style="text-align:center;padding:40px 20px">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;color:var(--text-light)">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/>
@@ -406,8 +440,13 @@
         </div>
       </div>
 
-      <div class="card" style="background:#fff;border:2px solid var(--border);max-width:800px;margin:0 auto">
-        <h3 style="margin:0 0 24px;font-size:20px;font-weight:700">Transaction Details</h3>
+      <div class="card" style="background:#fff;border:1px solid var(--border);max-width:800px;margin:0 auto">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px">
+          <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <h3 style="margin:0;font-size:20px;font-weight:700">Transaction Details</h3>
+        </div>
         <input type="hidden" id="transactionSeniorId">
         <div class="form-group">
           <label class="form-label">Transaction Type</label>
@@ -446,25 +485,76 @@
         </div>
       </div>
 
-      <div class="card" style="background:#fff;border:2px solid var(--border);margin-top:24px">
-        <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Recent Transactions</h3>
+      <div class="card" style="background:#fff;border:1px solid var(--border);margin-top:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h3 style="margin:0;font-size:18px;font-weight:700">Recent Transactions</h3>
+        </div>
         <div id="recentTransactions" style="max-height:400px;overflow-y:auto"></div>
       </div>
     </div>
 
     <!-- Check Eligibility Tab -->
     <div class="tab-panel" id="eligibilityTab">
-      <div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);padding:40px;border-radius:16px;margin-bottom:28px;box-shadow:0 8px 24px rgba(139,92,246,0.3)">
+      <div style="background:#22c55e;padding:32px;border-radius:8px;margin-bottom:24px;border:1px solid var(--border)">
         <div style="text-align:center">
-          <h1 style="margin:0;color:#fff;font-size:32px;font-weight:700;letter-spacing:-0.5px">Check Benefit Eligibility</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:15px">Verify senior citizen eligibility for benefits and services</p>
+          <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;letter-spacing:-0.5px">Benefit Eligibility Management</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:14px">Verify, accept, and reject senior citizen eligibility for benefits</p>
         </div>
       </div>
 
+      <!-- Eligibility List View -->
+      <div class="card" style="background:#fff;border:1px solid var(--border);margin-bottom:28px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 20px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Eligibility Requests</h3>
+          </div>
+          <div style="display:flex;gap:8px">
+            <select id="eligibilityFilterStatus" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer">
+              <option value="">All Status</option>
+              <option value="pending">Pending Review</option>
+              <option value="accepted">Accepted</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+        <div id="eligibilityListContainer" style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);background:var(--bg)">
+                <th style="padding:12px 16px;text-align:left;font-weight:700;font-size:14px;color:var(--text-light)">Name</th>
+                <th style="padding:12px 16px;text-align:left;font-weight:700;font-size:14px;color:var(--text-light)">ID</th>
+                <th style="padding:12px 16px;text-align:left;font-weight:700;font-size:14px;color:var(--text-light)">Age</th>
+                <th style="padding:12px 16px;text-align:left;font-weight:700;font-size:14px;color:var(--text-light)">Eligibility</th>
+                <th style="padding:12px 16px;text-align:left;font-weight:700;font-size:14px;color:var(--text-light)">Benefits</th>
+                <th style="padding:12px 16px;text-align:left;font-weight:700;font-size:14px;color:var(--text-light)">Decision</th>
+                <th style="padding:12px 16px;text-align:center;font-weight:700;font-size:14px;color:var(--text-light)">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="eligibilityTableBody">
+              <tr>
+                <td colspan="7" style="padding:40px;text-align:center;color:var(--text-light)">Loading seniors...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Scan Individual QR -->
       <div style="display:grid;grid-template-columns:400px 1fr;gap:24px">
-        <div class="card" style="background:#fff;border:2px solid var(--border)">
-          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Scan Senior QR</h3>
-          <div id="qr-reader-eligibility" style="position:relative;border:2px dashed var(--border);border-radius:12px;overflow:hidden;background:#f8fafc;min-height:250px;display:flex;align-items:center;justify-content:center">
+        <div class="card" style="background:#fff;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Quick Check — Scan QR</h3>
+          </div>
+          <div id="qr-reader-eligibility" style="position:relative;border:1px dashed #22c55e;border-radius:8px;overflow:hidden;background:#f0fdf4;min-height:250px;display:flex;align-items:center;justify-content:center">
             <video id="qr-video-eligibility" style="width:100%;height:auto;display:none" playsinline></video>
             <canvas id="qr-canvas-eligibility" style="display:none"></canvas>
             <div id="scan-status-eligibility" style="position:absolute;bottom:12px;left:12px;right:12px;padding:12px;background:rgba(0,0,0,0.8);color:#fff;border-radius:8px;text-align:center;font-size:14px;font-weight:600">Ready to scan</div>
@@ -493,13 +583,18 @@
           </label>
         </div>
 
-        <div class="card" style="background:#fff;border:2px solid var(--border)">
-          <h3 style="margin:0 0 16px;font-size:18px;font-weight:700">Eligibility Status</h3>
+        <div class="card" style="background:#fff;border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+            <h3 style="margin:0;font-size:18px;font-weight:700">Eligibility Details</h3>
+          </div>
           <div id="eligibilityResult" style="text-align:center;padding:60px 20px">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;color:var(--text-light)">
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
             </svg>
-            <p style="margin:0;color:var(--text-light)">Enter a senior ID to check eligibility</p>
+            <p style="margin:0;color:var(--text-light)">Scan a QR code to see details</p>
           </div>
         </div>
       </div>
@@ -507,48 +602,138 @@
 
     <!-- Profile Tab -->
     <div class="tab-panel" id="profileTab">
-      <div class="card" style="background:linear-gradient(to bottom,#fff,var(--bg));border:2px solid var(--border);min-height:600px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:10px;display:flex;align-items:center;justify-content:center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
-            </div>
-            <h3 style="margin:0;font-size:20px;font-weight:700">OSCA Staff Profile</h3>
-          </div>
-        </div>
 
-        <div class="profile-grid" style="display:grid;grid-template-columns:300px 1fr;gap:32px;align-items:start">
-          <div class="profile-avatar-section" style="text-align:center">
-            <div style="width:200px;height:200px;margin:0 auto 20px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:20px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:72px;font-weight:700;box-shadow:0 8px 24px rgba(59,130,246,0.3)">
+      <!-- Tab Header Banner -->
+      <div style="background:#22c55e;padding:32px;border-radius:8px;margin-bottom:24px;border:1px solid var(--border)">
+        <div style="text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;letter-spacing:-0.5px">My Profile</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:14px">OSCA/MSWD Staff account information</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:start">
+
+        <!-- Left Column: Avatar Card -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <div class="card" style="background:#fff;border:1px solid var(--border);text-align:center">
+            <!-- Avatar -->
+            <div style="width:120px;height:120px;margin:0 auto 16px;background:#dcfce7;border-radius:8px;border:1px solid #b7e4c7;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700;color:#16a34a;letter-spacing:-2px">
               <span id="oscaProfileInitials">OS</span>
             </div>
-            <h2 style="margin:0 0 8px;font-size:24px;font-weight:700" id="oscaProfileDisplayName">OSCA Staff</h2>
-            <p style="margin:0;color:var(--text-light);font-size:15px" id="oscaProfileRole">Staff Member</p>
-            <button class="btn ghost" id="logoutBtnOSCA" style="margin-top:20px;width:100%;color:#ef4444">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px">
+            <!-- Name & Role -->
+            <h2 style="margin:0 0 6px;font-size:20px;font-weight:700;color:var(--text)" id="oscaProfileDisplayName">OSCA Staff</h2>
+            <span style="display:inline-block;padding:4px 14px;background:var(--primary-light);color:#16a34a;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.3px;border:1px solid #bbf7d0" id="oscaProfileRole">OSCA/MSWD Staff</span>
+
+            <!-- Status indicator -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+              <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0"></span>
+              <span style="font-size:13px;color:var(--text-light);font-weight:500">Active Session</span>
+            </div>
+          </div>
+
+          <!-- Quick Actions Card -->
+          <div class="card" style="background:#fff;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+              <div style="width:32px;height:32px;background:var(--primary-light);border:1px solid #22c55e;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
+              </div>
+              <h4 style="margin:0;font-size:15px;font-weight:700">Quick Actions</h4>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <a href="#verify" class="navlink" data-tab="verify" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);background:#fafafa;transition:all 0.15s">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/></svg>
+                <span style="font-size:13px;font-weight:600">Verify QR Code</span>
+              </a>
+              <a href="#transactions" class="navlink" data-tab="transactions" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);background:#fafafa;transition:all 0.15s">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span style="font-size:13px;font-weight:600">Log Transaction</span>
+              </a>
+              <a href="#eligibility" class="navlink" data-tab="eligibility" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);background:#fafafa;transition:all 0.15s">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span style="font-size:13px;font-weight:600">Check Eligibility</span>
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <!-- Account Information Card -->
+          <div class="card" style="background:#fff;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+              <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <h3 style="margin:0;font-size:18px;font-weight:700">Account Information</h3>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div>
+                <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px">Username</label>
+                <div style="padding:12px 14px;background:var(--bg);border-radius:8px;font-size:15px;font-weight:600;border:1px solid var(--border)" id="oscaProfileUsername">osca</div>
+              </div>
+              <div>
+                <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px">Account Type</label>
+                <div style="padding:12px 14px;background:var(--primary-light);border-radius:8px;font-size:14px;font-weight:700;color:#16a34a;border:1px solid #bbf7d0">Staff Account</div>
+              </div>
+              <div>
+                <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px">Department</label>
+                <div style="padding:12px 14px;background:var(--bg);border-radius:8px;font-size:14px;font-weight:600;border:1px solid var(--border)">OSCA / MSWD</div>
+              </div>
+              <div>
+                <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px">Location</label>
+                <div style="padding:12px 14px;background:var(--bg);border-radius:8px;font-size:14px;font-weight:600;border:1px solid var(--border)">Floridablanca, Pampanga</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Portal Access Card -->
+          <div class="card" style="background:#fff;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+              <div style="width:36px;height:36px;background:var(--primary-light);border:1px solid #22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <h3 style="margin:0;font-size:18px;font-weight:700">Portal Access</h3>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="9" y2="15"/><line x1="15" y1="9" x2="15" y2="15"/></svg>
+                <span style="font-size:13px;font-weight:600;color:#166534">QR Verification</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span style="font-size:13px;font-weight:600;color:#166534">Update Records</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span style="font-size:13px;font-weight:600;color:#166534">Log Transactions</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span style="font-size:13px;font-weight:600;color:#166534">Check Eligibility</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sign Out Card -->
+          <div class="card" style="background:#fef2f2;border:1px solid #fca5a5">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <div style="width:36px;height:36px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </div>
+              <h3 style="margin:0;font-size:18px;font-weight:700;color:#991b1b">Sign Out</h3>
+            </div>
+            <p style="margin:0 0 16px;font-size:14px;color:#7f1d1d">End your current session and return to the login page.</p>
+            <button class="btn ghost" id="logoutBtnOSCA" style="color:#dc2626;border-color:#dc2626;width:100%">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:middle">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
               Logout
             </button>
           </div>
 
-          <div>
-            <div class="card" style="background:#fff;border:1px solid var(--border)">
-              <h4 style="margin:0 0 16px;font-size:18px;font-weight:700">Account Information</h4>
-              <div style="display:grid;gap:16px">
-                <div>
-                  <label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--text-light);text-transform:uppercase">Username</label>
-                  <div style="padding:12px 16px;background:var(--bg);border-radius:8px;font-size:15px;font-weight:600" id="oscaProfileUsername">osca</div>
-                </div>
-                <div>
-                  <label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--text-light);text-transform:uppercase">Role</label>
-                  <div style="padding:12px 16px;background:linear-gradient(135deg,var(--primary-light),#eff6ff);border-radius:8px;font-size:15px;font-weight:600;color:var(--primary)">OSCA/MSWD Staff</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -617,7 +802,7 @@ function startVerifyScanner() {
     const status = document.getElementById('scan-status-osca');
     
     status.textContent = 'Starting camera...';
-    status.style.background = 'rgba(59,130,246,0.9)';
+    status.style.background = 'rgba(34,197,94,0.9)';
     
     navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'environment' } 
@@ -712,7 +897,7 @@ function processVerifyQRCode(data) {
             const age = calculateAge(senior.birth);
             resultDiv.innerHTML = `
                 <div style="padding:24px">
-                    <div style="width:80px;height:80px;margin:0 auto 16px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center">
+                    <div style="width:80px;height:80px;margin:0 auto 16px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
@@ -749,10 +934,10 @@ function processVerifyQRCode(data) {
                         </div>
                     </div>
                     
-                    <div style="margin-top:20px;padding:16px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:8px;border:1px solid #3b82f6">
-                        <div style="font-size:13px;font-weight:600;color:#3b82f6;margin-bottom:8px">Active Benefits</div>
+                    <div style="margin-top:20px;padding:16px;background:#f0fdf4;border-radius:8px;border:1px solid #22c55e">
+                        <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px">Active Benefits</div>
                         <div style="display:flex;flex-wrap:wrap;gap:6px">
-                            ${(senior.benefits || []).map(b => `<span style="padding:4px 12px;background:#3b82f6;color:#fff;border-radius:6px;font-size:12px;font-weight:600">${b}</span>`).join('')}
+                            ${(senior.benefits || []).map(b => `<span style="padding:4px 12px;background:#22c55e;color:#fff;border-radius:6px;font-size:12px;font-weight:600">${b}</span>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -1081,7 +1266,7 @@ function processTransactionQRCode(data) {
             const age = calculateAge(senior.birth);
             document.getElementById('transactionSeniorInfo').innerHTML = `
                 <div style="padding:20px">
-                    <div style="width:60px;height:60px;margin:0 auto 12px;background:linear-gradient(135deg,#10b981,#059669);border-radius:50%;display:flex;align-items:center;justify-content:center">
+                    <div style="width:60px;height:60px;margin:0 auto 12px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                         </svg>
@@ -1193,7 +1378,7 @@ function loadRecentTransactions() {
                     <div style="font-weight:700;font-size:16px">${t.seniorName}</div>
                     <div style="font-size:13px;color:var(--text-light)">${t.seniorId}</div>
                 </div>
-                <div style="padding:4px 12px;background:linear-gradient(135deg,var(--primary-light),#eff6ff);border-radius:6px;font-size:12px;font-weight:600;color:var(--primary)">${t.type}</div>
+                <div style="padding:4px 12px;background:var(--primary-light);border-radius:6px;font-size:12px;font-weight:600;color:var(--primary)">${t.type}</div>
             </div>
             ${t.amount > 0 ? `<div style="font-size:20px;font-weight:700;color:#10b981;margin-bottom:8px">₱${t.amount.toFixed(2)}</div>` : ''}
             ${t.notes ? `<div style="font-size:14px;color:var(--text-light);margin-bottom:8px">${t.notes}</div>` : ''}
@@ -1210,6 +1395,108 @@ function setupEligibility() {
     document.getElementById('startScanBtnEligibility').addEventListener('click', startEligibilityScanner);
     document.getElementById('stopScanBtnEligibility').addEventListener('click', stopEligibilityScanner);
     document.getElementById('qrImageUploadEligibility').addEventListener('change', handleEligibilityImageUpload);
+    document.getElementById('eligibilityFilterStatus').addEventListener('change', filterEligibilityList);
+    
+    // Load and display eligibility list
+    loadEligibilityList();
+}
+
+function loadEligibilityList() {
+    const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+    const eligibilityStatus = JSON.parse(localStorage.getItem('lingap_eligibility_status') || '{}');
+    
+    const tbody = document.getElementById('eligibilityTableBody');
+    
+    if (profiles.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--text-light)">No seniors found</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    profiles.forEach(senior => {
+        const age = calculateAge(senior.birth);
+        const isEligible = age >= 60 && senior.status === 'active';
+        const status = eligibilityStatus[senior.id] || 'pending';
+        const benefits = getAvailableBenefits(age, senior);
+        
+        const statusColor = status === 'accepted' ? '#10b981' : status === 'rejected' ? '#ef4444' : '#f59e0b';
+        const statusBg = status === 'accepted' ? '#d1fae5' : status === 'rejected' ? '#fee2e2' : '#fef3c7';
+        
+        // Create benefits summary with icons
+        const benefitsSummary = benefits.length > 0 
+            ? benefits.slice(0, 2).map(b => `<span style="display:inline-block;padding:2px 8px;background:${b.color}15;color:${b.color};border-radius:4px;font-size:11px;font-weight:600;margin:2px 2px 2px 0">${b.name.split(' ')[0]}</span>`).join('') + (benefits.length > 2 ? `<span style="display:inline-block;padding:2px 8px;background:#f3f4f6;color:#64748b;border-radius:4px;font-size:11px;font-weight:600;margin:2px 2px 2px 0">+${benefits.length - 2}</span>` : '')
+            : '<span style="color:var(--text-light);font-size:12px">None</span>';
+        
+        html += `
+            <tr style="border-bottom:1px solid var(--border);transition:background 0.2s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'">
+                <td style="padding:12px 16px;font-weight:600">${senior.name}</td>
+                <td style="padding:12px 16px;font-size:13px;color:var(--text-light);font-family:monospace">${senior.id}</td>
+                <td style="padding:12px 16px;font-weight:600">${age} years</td>
+                <td style="padding:12px 16px">
+                    <span style="padding:4px 10px;background:${isEligible ? '#d1fae5' : '#fee2e2'};color:${isEligible ? '#065f46' : '#991b1b'};border-radius:6px;font-size:12px;font-weight:600;text-transform:capitalize">
+                        ${isEligible ? 'Eligible' : 'Ineligible'}
+                    </span>
+                </td>
+                <td style="padding:12px 16px;max-width:200px">
+                    ${benefitsSummary}
+                </td>
+                <td style="padding:12px 16px">
+                    <span style="padding:4px 10px;background:${statusBg};color:${statusColor};border-radius:6px;font-size:12px;font-weight:600;text-transform:capitalize">
+                        ${status}
+                    </span>
+                </td>
+                <td style="padding:12px 16px">
+                    <div style="display:flex;gap:8px;justify-content:center">
+                        ${isEligible ? `
+                            <button onclick="updateEligibilityDecision('${senior.id}', 'accepted')" style="padding:6px 12px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:4px;vertical-align:middle">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                Accept
+                            </button>
+                            <button onclick="updateEligibilityDecision('${senior.id}', 'rejected')" style="padding:6px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:4px;vertical-align:middle">
+                                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                                Reject
+                            </button>
+                        ` : `
+                            <span style="padding:6px 12px;background:#f3f4f6;color:#9ca3af;border-radius:6px;font-size:12px;font-weight:600">Not Eligible</span>
+                        `}
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function updateEligibilityDecision(seniorId, decision) {
+    const eligibilityStatus = JSON.parse(localStorage.getItem('lingap_eligibility_status') || '{}');
+    eligibilityStatus[seniorId] = decision;
+    localStorage.setItem('lingap_eligibility_status', JSON.stringify(eligibilityStatus));
+    
+    loadEligibilityList();
+    
+    // Show feedback message
+    const message = decision === 'accepted' ? 'Eligibility approved!' : 'Eligibility rejected!';
+    alert(message);
+}
+
+function filterEligibilityList() {
+    const filterValue = document.getElementById('eligibilityFilterStatus').value;
+    const rows = document.getElementById('eligibilityTableBody').querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        if (filterValue === '') {
+            row.style.display = '';
+        } else {
+            const statusCell = row.cells[5]; // Updated to column 5 (Decision column)
+            const statusText = statusCell.textContent.trim().toLowerCase();
+            row.style.display = statusText === filterValue ? '' : 'none';
+        }
+    });
 }
 
 function startEligibilityScanner() {
@@ -1318,6 +1605,7 @@ function checkEligibility(seniorId) {
     }
     
     const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+    const eligibilityStatus = JSON.parse(localStorage.getItem('lingap_eligibility_status') || '{}');
     const senior = profiles.find(p => p.id === seniorId);
     
     const resultDiv = document.getElementById('eligibilityResult');
@@ -1339,18 +1627,19 @@ function checkEligibility(seniorId) {
     
     const age = calculateAge(senior.birth);
     const isEligible = age >= 60 && senior.status === 'active';
+    const availableBenefits = getAvailableBenefits(age, senior);
     
     resultDiv.innerHTML = `
         <div style="padding:24px">
-            <div style="width:80px;height:80px;margin:0 auto 16px;background:${isEligible ? 'linear-gradient(135deg,#10b981,#059669)' : '#ef4444'};border-radius:50%;display:flex;align-items:center;justify-content:center">
+            <div style="width:80px;height:80px;margin:0 auto 16px;background:${isEligible ? '#10b981' : '#ef4444'};border-radius:50%;display:flex;align-items:center;justify-content:center">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
                     ${isEligible ? '<polyline points="20 6 9 17 4 12"/>' : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'}
                 </svg>
             </div>
             <h3 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${isEligible ? '#10b981' : '#ef4444'}">${isEligible ? 'Eligible' : 'Not Eligible'}</h3>
-            <p style="margin:0 0 24px;color:var(--text-light)">${isEligible ? 'Can access all benefits' : 'Does not meet requirements'}</p>
+            <p style="margin:0 0 24px;color:var(--text-light)">${isEligible ? age < 90 ? 'Age-qualified beneficiary' : age < 100 ? 'Birthday Incentive eligible' : 'Centenarian Award recipient' : 'Does not meet age requirements (60+)'}</p>
             
-            <div style="background:var(--bg);padding:20px;border-radius:12px;text-align:left">
+            <div style="background:var(--bg);padding:20px;border-radius:12px;text-align:left;margin-bottom:20px">
                 <div style="margin-bottom:12px">
                     <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:4px">Senior Citizen</div>
                     <div style="font-size:18px;font-weight:700">${senior.name}</div>
@@ -1366,17 +1655,121 @@ function checkEligibility(seniorId) {
                         <div style="font-size:16px;font-weight:700;text-transform:capitalize">${senior.status || 'Active'}</div>
                     </div>
                 </div>
-                ${isEligible && senior.benefits && senior.benefits.length > 0 ? `
+                
+                ${isEligible ? `
                 <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-                    <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:8px">Available Benefits</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px">
-                        ${senior.benefits.map(b => `<span style="padding:4px 12px;background:#10b981;color:#fff;border-radius:6px;font-size:12px;font-weight:600">${b}</span>`).join('')}
+                    <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;font-weight:600;margin-bottom:10px">Available Benefits</div>
+                    <div style="display:grid;gap:10px">
+                        ${availableBenefits.map(benefit => `
+                            <div style="padding:12px;background:white;border-left:4px solid ${benefit.color};border-radius:6px">
+                                <div style="font-weight:700;color:#1e293b;font-size:14px;margin-bottom:2px">${benefit.name}</div>
+                                <div style="font-size:12px;color:var(--text-light)">${benefit.description}</div>
+                                ${benefit.amount ? `<div style="font-size:13px;color:${benefit.color};font-weight:700;margin-top:6px">${benefit.amount}</div>` : ''}
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
                 ` : ''}
             </div>
+            
+            ${isEligible ? `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <button onclick="updateEligibilityDecision('${senior.id}', 'accepted'); loadEligibilityList()" style="padding:12px 16px;background:#10b981;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;transition:all 0.2s">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;vertical-align:middle">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Accept Eligibility
+                </button>
+                <button onclick="updateEligibilityDecision('${senior.id}', 'rejected'); loadEligibilityList()" style="padding:12px 16px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;transition:all 0.2s">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;vertical-align:middle">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    Reject Eligibility
+                </button>
+            </div>
+            ` : ''}
         </div>
     `;
+}
+
+// Get available benefits based on age
+function getAvailableBenefits(age, senior) {
+    const benefits = [];
+    
+    // Base benefits for age 60+
+    if (age >= 60) {
+        benefits.push({
+            name: 'Medical Assistance',
+            description: 'Healthcare support and medical services',
+            color: '#22c55e'
+        });
+        
+        benefits.push({
+            name: 'Burial Assistance',
+            description: 'Financial support for funeral services',
+            color: '#6366f1'
+        });
+    }
+    
+    // Birthday Incentives Program (90+)
+    if (age >= 90 && age < 100) {
+        const amount = getBirthdayIncentiveAmount(age);
+        benefits.push({
+            name: 'Birthday Incentives Program',
+            description: `Birthday cake and cheque on celebrating birthday`,
+            color: '#f59e0b',
+            amount: `₱${amount.toLocaleString()} per birthday`
+        });
+    }
+    
+    // Centenarian Award (100+)
+    if (age >= 100) {
+        benefits.push({
+            name: 'Centenarian Award',
+            description: 'Special recognition and financial reward for reaching 100 years',
+            color: '#f97316',
+            amount: '₱100,000'
+        });
+        
+        // Still eligible for birthday incentives
+        const amount = getBirthdayIncentiveAmount(age);
+        benefits.push({
+            name: 'Birthday Incentives Program',
+            description: `Birthday cake and cheque on celebrating birthday`,
+            color: '#f59e0b',
+            amount: `₱${amount.toLocaleString()} per birthday`
+        });
+    }
+    
+    // Localized Social Pension Program (note about limited slots)
+    if (age >= 60) {
+        benefits.push({
+            name: 'Localized Social Pension Program',
+            description: `Limited slots (165 total, 1 per barangay yearly). Funding from LGU.`,
+            color: '#10b981'
+        });
+    }
+    
+    return benefits;
+}
+
+// Calculate birthday incentive amount based on age
+function getBirthdayIncentiveAmount(age) {
+    if (age >= 100) {
+        // Age 100+ gets the highest amount for 94-99
+        return 10000;
+    } else if (age >= 94) {
+        return 10000;
+    } else if (age === 93) {
+        return 8500;
+    } else if (age === 92) {
+        return 7000;
+    } else if (age === 91) {
+        return 5000;
+    } else if (age === 90) {
+        return 3000;
+    }
+    return 0;
 }
 
 // Logout
@@ -1385,5 +1778,9 @@ document.getElementById('logoutBtnOSCA').addEventListener('click', () => {
     window.location.href = 'index.html';
 });
 </script>
+<script src="assets/age-benefits-management.js"></script>
 </body>
 </html>
+
+
+

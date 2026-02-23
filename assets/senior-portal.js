@@ -5,80 +5,124 @@ const BENEFITS_KEY = 'lingap_benefits_v1';
 
 let currentUser = null;
 
-// Initialize portal
-function initSeniorPortal() {
-    console.log('Initializing senior portal...');
-    
-    // Ensure profiles are loaded first
-    const profilesRaw = localStorage.getItem(PROFILES_KEY);
-    if (!profilesRaw) {
-        console.log('No profiles found, redirecting to login');
-        alert('No profiles found in system. Please contact administrator.');
-        window.location.href = 'index.html';
-        return;
+// ---- Senior Portal Pagination ----
+let txPage = 1, seniorBenefitsPage = 1;
+const TX_PAGE_SIZE = 8, SP_BENEFITS_PAGE_SIZE = 6;
+
+// Pagination renderer (senior side)
+function renderPagination(containerEl, page, totalPages, gotoFn) {
+    if (!containerEl) return;
+    containerEl.innerHTML = '';
+    if (totalPages <= 1) return;
+    const mkBtn = (html, p, disabled, active) =>
+        `<button onclick="${gotoFn}(${p})" ${disabled ? 'disabled' : ''} style="display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:36px;padding:0 10px;border-radius:8px;border:1px solid ${active ? '#22c55e' : 'var(--border)'};background:${active ? '#22c55e' : disabled ? '#f9fafb' : '#fff'};color:${active ? '#fff' : disabled ? '#9ca3af' : '#374151'};font-size:13px;font-weight:${active ? '700' : '500'};cursor:${disabled ? 'not-allowed' : 'pointer'}">${html}</button>`;
+    let nums = '', prev = 0;
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+            if (prev && i - prev > 1) nums += `<span style="padding:0 4px;color:#9ca3af">…</span>`;
+            nums += mkBtn(i, i, false, i === page);
+            prev = i;
+        }
     }
-    
+    containerEl.innerHTML = `<div style="display:flex;justify-content:center;align-items:center;gap:6px;padding-top:18px;flex-wrap:wrap">${mkBtn('&laquo; Prev', page - 1, page <= 1, false)}${nums}${mkBtn('Next &raquo;', page + 1, page >= totalPages, false)}</div>`;
+}
+
+// Initialize portal
+async function initSeniorPortal() {
+    console.log('Initializing senior portal...');
+
     // Check if user is logged in
     const sessionRaw = sessionStorage.getItem('currentUser');
-    console.log('Session raw:', sessionRaw);
-    
     if (!sessionRaw) {
-        console.log('No session found, redirecting to login');
-        window.location.href = 'index.html';
-        return;
-    }
-    
-    const session = JSON.parse(sessionRaw);
-    console.log('Session data:', session);
-    
-    if (!session.id || session.role !== 'senior') {
-        console.log('Invalid session, redirecting to login');
         window.location.href = 'index.html';
         return;
     }
 
-    // Load user data
-    const profiles = JSON.parse(profilesRaw);
-    console.log('Loaded profiles:', profiles.length);
-    console.log('Looking for ID:', session.id);
-    
-    currentUser = profiles.find(p => p.id === session.id);
-    console.log('Current user:', currentUser);
-    
+    const session = JSON.parse(sessionRaw);
+    if (!session.id || session.role !== 'senior') {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // Try to load from Supabase first
+    if (window.db) {
+        try {
+            currentUser = await window.db.getSeniorById(session.id);
+        } catch (e) {
+            console.warn('[senior-portal] Supabase fetch failed, trying localStorage', e);
+        }
+    }
+
+    // Fallback to localStorage if Supabase didn't return data
     if (!currentUser) {
-        console.log('User not found in profiles');
-        console.log('Available IDs:', profiles.map(p => p.id));
-        console.log('Looking for:', session.id);
+        const profilesRaw = localStorage.getItem(PROFILES_KEY);
+        if (!profilesRaw) {
+            alert('No profiles found in system. Please contact administrator.');
+            window.location.href = 'index.html';
+            return;
+        }
+        const profilesArr = JSON.parse(profilesRaw);
+        currentUser = profilesArr.find(p => p.id === session.id) || null;
+    }
+
+    if (!currentUser) {
         alert('Your profile was not found. Please contact administrator.');
         window.location.href = 'index.html';
         return;
     }
 
-    console.log('User found, initializing sections...');
-    
+    // Normalise field names
+    currentUser.registrationDate = currentUser.registrationDate || currentUser.registration_date || null;
+    currentUser.benefits = Array.isArray(currentUser.benefits) ? currentUser.benefits : [];
+
+    // Pre-load transactions from Supabase into localStorage cache for getTransactions()
+    if (window.db) {
+        try {
+            const txns = await window.db.getTransactions(currentUser.id);
+            if (txns && txns.length > 0) {
+                // Normalise and merge into localStorage so getTransactions() works
+                const normalised = txns.map(t => ({
+                    ...t,
+                    seniorId:   t.senior_id   || t.seniorId,
+                    seniorName: t.senior_name || t.seniorName,
+                    merchantId: t.merchant_id || t.merchantId,
+                    scanDate:   t.scan_date   || t.scanDate
+                }));
+                localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(normalised));
+            }
+        } catch (e) {
+            console.warn('[senior-portal] Could not load transactions from Supabase', e);
+        }
+    }
+
+    // Pre-load benefits from Supabase into localStorage cache
+    if (window.db) {
+        try {
+            const bens = await window.db.getBenefits();
+            if (bens && bens.length > 0) {
+                localStorage.setItem(BENEFITS_KEY, JSON.stringify(bens));
+            }
+        } catch (e) {
+            console.warn('[senior-portal] Could not load benefits from Supabase', e);
+        }
+    }
+
+    console.log('User loaded:', currentUser);
+
     // Initialize all sections
     try {
         loadDashboard();
         loadBenefits();
         loadProfile();
         loadTransactions();
-        
-        // Load QR codes with increased delay
+
         setTimeout(() => {
-            console.log('=== Starting QR Code Generation ===');
-            console.log('QRCode library check:', typeof QRCode);
-            if (typeof QRCode !== 'undefined') {
-                console.log('QRCode.toCanvas available:', typeof QRCode.toCanvas);
-            }
-            loadQRCodes();
+            if (typeof QRCode !== 'undefined') loadQRCodes();
         }, 500);
-        
-        console.log('All sections loaded successfully');
-    } catch(error) {
+    } catch (error) {
         console.error('Error loading sections:', error);
     }
 
-    // Setup event listeners
     setupEventListeners();
 }
 
@@ -115,7 +159,21 @@ function setupEventListeners() {
 // Load Dashboard
 function loadDashboard() {
     // Welcome message
-    document.getElementById('welcomeMessage').textContent = `${currentUser.name} - ID: ${currentUser.id}`;
+    const firstName = currentUser.name ? currentUser.name.split(' ')[0] : 'Senior';
+    const greetingNameEl = document.getElementById('dashGreetingName');
+    if (greetingNameEl) greetingNameEl.textContent = firstName;
+    document.getElementById('welcomeMessage').textContent = `ID: ${currentUser.id} · Age: ${currentUser.age || '—'} · ${currentUser.barangay || currentUser.address || ''}`.trim().replace(/·\s*$/, '');
+
+    // Live clock
+    function updateClock() {
+        const now = new Date();
+        const clockEl = document.getElementById('dashClock');
+        const dateEl = document.getElementById('dashDate');
+        if (clockEl) clockEl.textContent = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (dateEl) dateEl.textContent = now.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
 
     // Stats
     const transactions = getTransactions();
@@ -124,29 +182,63 @@ function loadDashboard() {
     document.getElementById('dashBenefitsCount').textContent = benefits.length;
     document.getElementById('dashTransactionsCount').textContent = transactions.length;
 
+    // Senior ID card
+    const seniorIdEl = document.getElementById('dashSeniorId');
+    if (seniorIdEl) seniorIdEl.textContent = currentUser.id;
+    const memberSinceEl = document.getElementById('dashMemberSince');
+    if (memberSinceEl) {
+        const reg = currentUser.registrationDate || currentUser.dateRegistered || currentUser.createdAt;
+        memberSinceEl.textContent = reg ? 'Since ' + new Date(reg).toLocaleDateString('en-PH', { year: 'numeric', month: 'short' }) : 'Registered member';
+    }
+
     // Last activity
+    const lastActivityEl = document.getElementById('dashLastActivity');
+    const lastActivityTypeEl = document.getElementById('dashLastActivityType');
     if (transactions.length > 0) {
         const last = transactions[transactions.length - 1];
         const date = new Date(last.timestamp);
-        document.getElementById('dashLastActivity').textContent = formatDate(date);
+        if (lastActivityEl) lastActivityEl.textContent = formatDate(date);
+        if (lastActivityTypeEl) lastActivityTypeEl.textContent = last.type || 'Transaction';
     }
 
     // Recent activity
     const recentActivity = document.getElementById('dashRecentActivity');
     if (transactions.length === 0) {
-        recentActivity.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:40px">No recent activity</p>';
-    } else {
-        recentActivity.innerHTML = transactions.slice(-5).reverse().map(t => `
-            <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-                <div>
-                    <strong>${t.type || 'Transaction'}</strong>
-                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px">${t.note || 'No details'}</div>
+        recentActivity.innerHTML = `
+            <div style="text-align:center;padding:48px 20px">
+                <div style="width:56px;height:56px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </div>
-                <div style="text-align:right">
-                    <div style="font-size:13px;color:var(--text-muted)">${formatDateTime(new Date(t.timestamp))}</div>
+                <p style="color:#6b7280;font-size:15px;font-weight:600;margin:0">No recent activity</p>
+                <p style="color:#9ca3af;font-size:13px;margin:6px 0 0">Your transactions will appear here</p>
+            </div>
+        `;
+    } else {
+        const typeColors = { 'QR Scan': '#22c55e', 'Benefit Claim': '#3b82f6', 'Registration': '#8b5cf6', 'Verification': '#f59e0b' };
+        const typeIcons = {
+            'QR Scan': '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><path d="M13 13h3v3h-3z"/><path d="M17 17h4v4h-4z"/><path d="M13 17h1v4h-1z"/>',
+            'Benefit Claim': '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+            'default': '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
+        };
+        recentActivity.innerHTML = transactions.slice(-5).reverse().map(t => {
+            const color = typeColors[t.type] || '#6b7280';
+            const icon = typeIcons[t.type] || typeIcons['default'];
+            return `
+            <div style="padding:14px 0;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:14px">
+                <div style="width:38px;height:38px;background:${color}18;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2">${icon}</svg>
+                </div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:14px;font-weight:600;color:#1f2937">${t.type || 'Transaction'}</div>
+                    <div style="font-size:12px;color:#6b7280;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.note || 'No details'}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                    <div style="font-size:12px;font-weight:600;color:#374151">${formatDate(new Date(t.timestamp))}</div>
+                    <div style="font-size:11px;color:#9ca3af;margin-top:2px">${new Date(t.timestamp).toLocaleTimeString('en-PH', {hour:'2-digit',minute:'2-digit'})}</div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 }
 
@@ -157,46 +249,150 @@ function loadBenefits() {
     const userBenefits = allBenefits.filter(b => userBenefitIds.includes(b.name));
 
     const benefitsList = document.getElementById('benefitsList');
+    const countBadge = document.getElementById('benefitsCountBadge');
+    if (countBadge) countBadge.textContent = `${userBenefits.length} Program${userBenefits.length !== 1 ? 's' : ''}`;
 
     if (userBenefits.length === 0) {
         benefitsList.innerHTML = `
-            <div class="card" style="grid-column:1/-1;text-align:center;padding:60px">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="margin:0 auto 16px">
-                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
-                </svg>
-                <p style="color:var(--text-muted);font-size:16px">You are not enrolled in any benefits yet</p>
-                <p style="color:var(--text-muted);font-size:14px;margin-top:8px">Contact the OSCA office to enroll in available programs</p>
+            <div style="grid-column:1/-1;text-align:center;padding:60px 20px;background:#fff;border:1px solid var(--border);border-radius:8px">
+                <div style="width:64px;height:64px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                </div>
+                <p style="color:#374151;font-size:16px;font-weight:700;margin:0">No benefits enrolled yet</p>
+                <p style="color:#6b7280;font-size:14px;margin:8px 0 0">Contact the OSCA office to enroll in available programs</p>
             </div>
         `;
         return;
     }
 
-    benefitsList.innerHTML = userBenefits.map(b => `
-        <div class="card" style="background:linear-gradient(to bottom,#fff,var(--bg));border:2px solid var(--border)">
-            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
-                <h3 style="margin:0;font-size:18px;font-weight:700">${b.name}</h3>
-                <span style="padding:4px 12px;background:${b.status === 'Active' ? '#d1fae5' : '#fee2e2'};color:${b.status === 'Active' ? '#059669' : '#dc2626'};border-radius:12px;font-size:12px;font-weight:600">${b.status}</span>
-            </div>
-            <p style="margin:0 0 12px;color:var(--text-muted);font-size:14px">${b.description || 'No description available'}</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--border)">
-                <div>
-                    <div style="font-size:12px;color:var(--text-muted)">Amount</div>
-                    <div style="font-size:20px;font-weight:700;color:#667eea">₱${b.amount ? b.amount.toLocaleString() : '0'}</div>
+    const benefitIcons = {
+        'medical': '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+        'burial': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+        'pension': '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+        'birthday': '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+        'default': '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>'
+    };
+
+    const benefitColors = [
+        { border: '#22c55e', bg: '#dcfce7', text: '#15803d' },
+        { border: '#3b82f6', bg: '#eff6ff', text: '#1d4ed8' },
+        { border: '#8b5cf6', bg: '#f5f3ff', text: '#6d28d9' },
+        { border: '#f59e0b', bg: '#fffbeb', text: '#b45309' },
+        { border: '#ec4899', bg: '#fdf2f8', text: '#be185d' },
+    ];
+
+    const totalBenefitPages = Math.max(1, Math.ceil(userBenefits.length / SP_BENEFITS_PAGE_SIZE));
+    seniorBenefitsPage = Math.min(Math.max(1, seniorBenefitsPage), totalBenefitPages);
+    const bStart = (seniorBenefitsPage - 1) * SP_BENEFITS_PAGE_SIZE;
+    const bPageItems = userBenefits.slice(bStart, bStart + SP_BENEFITS_PAGE_SIZE);
+
+    benefitsList.innerHTML = bPageItems.map((b, i) => {
+        const color = benefitColors[(bStart + i) % benefitColors.length];
+        const nameLower = (b.name || '').toLowerCase();
+        let iconPath = benefitIcons['default'];
+        if (nameLower.includes('medical')) iconPath = benefitIcons['medical'];
+        else if (nameLower.includes('burial')) iconPath = benefitIcons['burial'];
+        else if (nameLower.includes('pension')) iconPath = benefitIcons['pension'];
+        else if (nameLower.includes('birthday') || nameLower.includes('incentive') || nameLower.includes('centenarian')) iconPath = benefitIcons['birthday'];
+
+        return `
+        <div style="background:#ffffff;border:1px solid var(--border);border-top:3px solid ${color.border};border-radius:8px;padding:20px;transition:box-shadow 0.2s" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+            <div style="display:flex;align-items:start;gap:14px;margin-bottom:14px">
+                <div style="width:44px;height:44px;background:${color.bg};border:1px solid ${color.border};border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color.border}" stroke-width="2">${iconPath}</svg>
                 </div>
-                <div style="text-align:right">
-                    <div style="font-size:12px;color:var(--text-muted)">Frequency</div>
-                    <div style="font-size:14px;font-weight:600">${b.frequency || 'One-time'}</div>
+                <div style="flex:1;min-width:0">
+                    <h3 style="margin:0;font-size:15px;font-weight:700;color:#1f2937;line-height:1.3">${b.name}</h3>
+                    <span style="display:inline-block;margin-top:4px;padding:2px 10px;background:${b.status === 'Active' ? '#d1fae5' : '#fee2e2'};color:${b.status === 'Active' ? '#059669' : '#dc2626'};border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">${b.status || 'Active'}</span>
+                </div>
+            </div>
+            <p style="margin:0 0 16px;color:#6b7280;font-size:13px;line-height:1.5">${b.description || 'No description available'}</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:14px;border-top:1px solid #f3f4f6">
+                <div style="background:${color.bg};border-radius:6px;padding:10px 12px">
+                    <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Amount</div>
+                    <div style="font-size:20px;font-weight:800;color:${color.border}">₱${b.amount ? Number(b.amount).toLocaleString() : '0'}</div>
+                </div>
+                <div style="background:#f9fafb;border-radius:6px;padding:10px 12px">
+                    <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Frequency</div>
+                    <div style="font-size:14px;font-weight:700;color:#374151">${b.frequency || 'One-time'}</div>
                 </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
+
+    renderPagination(document.getElementById('benefitsListPagination'), seniorBenefitsPage, totalBenefitPages, 'goToSeniorBenefitsPage');
+}
+
+function goToSeniorBenefitsPage(p) {
+    const allBenefits = JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    const userBenefitIds = currentUser.benefits || [];
+    const userBenefits = allBenefits.filter(b => userBenefitIds.includes(b.name));
+    const totalPages = Math.max(1, Math.ceil(userBenefits.length / SP_BENEFITS_PAGE_SIZE));
+    if (p < 1 || p > totalPages) return;
+    seniorBenefitsPage = p;
+    loadBenefits();
 }
 
 // Load Profile
 function loadProfile() {
     console.log('Loading profile...');
-    
-    // Load ID Card Design
+
+    // --- Banner ---
+    const bannerNameEl = document.getElementById('profileBannerName');
+    const bannerSubEl  = document.getElementById('profileBannerSub');
+    const bannerAgeEl  = document.getElementById('profileBannerAge');
+    const bannerIdEl   = document.getElementById('profileBannerId');
+    if (bannerNameEl) bannerNameEl.textContent = currentUser.name || 'Senior';
+    if (bannerSubEl)  bannerSubEl.textContent  = `${currentUser.barangay || currentUser.address || 'Floridablanca, Pampanga'}`;
+    if (bannerAgeEl)  bannerAgeEl.textContent  = currentUser.age ? `${currentUser.age} yrs` : '—';
+    if (bannerIdEl)   bannerIdEl.textContent   = currentUser.id || '—';
+
+    // --- Try to show photo in banner avatar ---
+    const savedPhoto = localStorage.getItem(`profile_photo_${currentUser.id}`);
+    const avatarEl = document.getElementById('profileBannerAvatar');
+    if (savedPhoto && avatarEl) {
+        avatarEl.innerHTML = `<img src="${savedPhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    }
+
+    // --- Info chips ---
+    const chipsEl = document.getElementById('profileInfoChips');
+    if (chipsEl) {
+        const chips = [
+            { icon: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>', label: 'Registered', value: currentUser.registrationDate ? formatDate(new Date(currentUser.registrationDate)) : '—' },
+            { icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', label: 'Sex', value: currentUser.sex || currentUser.gender || '—' },
+            { icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', label: 'Barangay', value: currentUser.barangay || '—' },
+            { icon: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.47 13 19.79 19.79 0 0 1 1.29 4.31 2 2 0 0 1 3.26 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.4a16 16 0 0 0 6.29 6.29l.77-.77a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17z"/>', label: 'Contact', value: currentUser.contact || '—' },
+        ];
+        chipsEl.innerHTML = chips.map(c => `
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" style="flex-shrink:0">${c.icon}</svg>
+                <span style="color:#6b7280;font-weight:500">${c.label}:</span>
+                <span style="color:#1f2937;font-weight:700">${c.value}</span>
+            </div>
+        `).join('');
+    }
+
+    // --- Personal Info Grid ---
+    const infoGrid = document.getElementById('profileInfoGrid');
+    if (infoGrid) {
+        const fields = [
+            { label: 'Full Name',    value: currentUser.name || '—' },
+            { label: 'Date of Birth', value: currentUser.birth || '—' },
+            { label: 'Age',          value: currentUser.age ? `${currentUser.age} years old` : '—' },
+            { label: 'Sex',          value: currentUser.sex || currentUser.gender || '—' },
+            { label: 'Barangay',     value: currentUser.barangay || '—' },
+            { label: 'Civil Status', value: currentUser.civilStatus || '—' },
+        ];
+        infoGrid.innerHTML = fields.map(f => `
+            <div style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+                <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">${f.label}</div>
+                <div style="font-size:13px;font-weight:700;color:#1f2937">${f.value}</div>
+            </div>
+        `).join('');
+    }
+
+    // --- ID Card ---
     document.getElementById('idCardNumber').textContent = currentUser.id;
     document.getElementById('idCardName').textContent = currentUser.name;
     document.getElementById('idCardBirth').textContent = currentUser.birth;
@@ -204,7 +400,10 @@ function loadProfile() {
     document.getElementById('idCardContact').textContent = currentUser.contact || 'Not provided';
     document.getElementById('idCardAddress').textContent = currentUser.address || 'Not provided';
     document.getElementById('idCardRegistered').textContent = formatDate(new Date(currentUser.registrationDate));
-    
+
+    // Load profile photo
+    loadProfilePhoto();
+
     // Load QR code on ID card after delay
     setTimeout(() => {
         console.log('=== Loading ID Card QR ===');
@@ -251,10 +450,10 @@ function loadIDCardQR() {
         console.log('Canvas created, calling QRCode.toCanvas...');
         
         QRCode.toCanvas(canvas, qrData, {
-            width: 150,
+            width: 80,
             margin: 1,
             color: {
-                dark: '#667eea',
+                dark: '#22c55e',
                 light: '#ffffff'
             }
         }, (error) => {
@@ -278,7 +477,7 @@ function loadIDCardQR() {
 
 // Download ID Card as image
 function downloadIDCard() {
-    const idCard = document.querySelector('#profileTab .card');
+    const idCard = document.querySelector('#govIdCard');
     
     // Use html2canvas if available, otherwise fallback to alert
     if (typeof html2canvas !== 'undefined') {
@@ -328,31 +527,39 @@ function downloadIDCard() {
 }
 
 // Update Profile
-function updateProfile() {
+async function updateProfile() {
     const contact = document.getElementById('updateContact').value.trim();
     const address = document.getElementById('updateAddress').value.trim();
-    const notes = document.getElementById('updateNotes').value.trim();
+    const notes   = document.getElementById('updateNotes').value.trim();
 
     if (!contact || !address) {
         showToast('Please fill in all required fields', 'error');
         return;
     }
 
-    // Update current user
     currentUser.contact = contact;
     currentUser.address = address;
-    currentUser.notes = notes;
+    currentUser.notes   = notes;
 
-    // Save to storage
+    // Persist to localStorage cache
     const profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
     const index = profiles.findIndex(p => p.id === currentUser.id);
     if (index !== -1) {
         profiles[index] = currentUser;
         localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
-        
-        showToast('Profile updated successfully!', 'success');
-        loadProfile();
     }
+
+    // Persist to Supabase
+    if (window.db) {
+        try {
+            await window.db.updateSenior(currentUser.id, { contact, address, notes });
+        } catch (e) {
+            console.error('[updateProfile]', e);
+        }
+    }
+
+    showToast('Profile updated successfully!', 'success');
+    loadProfile();
 }
 
 // Load QR Codes
@@ -382,6 +589,29 @@ function generateUniversalQR() {
         return;
     }
     
+    // Populate QR name/ID labels
+    const qrNameLbl = document.getElementById('qrNameLabel');
+    const qrIdLbl   = document.getElementById('qrIdLabel');
+    if (qrNameLbl) qrNameLbl.textContent = currentUser.name || '—';
+    if (qrIdLbl)   qrIdLbl.textContent   = `ID: ${currentUser.id || '—'}`;
+
+    // Populate QR contents info
+    const qrContents = document.getElementById('qrContentsInfo');
+    if (qrContents) {
+        const fields = [
+            { label: 'Senior ID',    value: currentUser.id },
+            { label: 'Full Name',    value: currentUser.name },
+            { label: 'Date of Birth',value: currentUser.birth },
+            { label: 'Contact',      value: currentUser.contact || '—' },
+        ];
+        qrContents.innerHTML = fields.map(f => `
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid #f3f4f6">
+                <span style="color:#6b7280;font-weight:500">${f.label}</span>
+                <span style="color:#1f2937;font-weight:700;font-family:${f.label==='Senior ID'?'monospace':'inherit'}">${f.value}</span>
+            </div>
+        `).join('');
+    }
+
     // Show loading
     universalQRContainer.innerHTML = '<div style="padding:40px;color:#667eea">Generating QR...</div>';
     
@@ -403,7 +633,7 @@ function generateUniversalQR() {
         width: 200,
         margin: 2,
         color: {
-            dark: '#667eea',
+            dark: '#22c55e',
             light: '#ffffff'
         }
     }, (error) => {
@@ -417,61 +647,157 @@ function generateUniversalQR() {
             const qrDataURL = canvas.toDataURL();
             localStorage.setItem(`universal_qr_${currentUser.id}`, qrDataURL);
             console.log('QR saved to storage');
+
+            // Wire Download button
+            const dlBtn = document.getElementById('downloadUniversalQR');
+            if (dlBtn) {
+                dlBtn.onclick = () => downloadQRImage(canvas, 'LingapApu-QR');
+            }
+
+            // Wire Share button
+            const shareBtn = document.getElementById('shareUniversalQR');
+            if (shareBtn) {
+                shareBtn.onclick = () => shareQRImage(canvas, 'LingapApu-QR');
+            }
         }
     });
 }
 
-// Download QR Code (universal QR)
-function downloadQR(containerId, filename) {
-    const container = document.getElementById(containerId);
-    const canvas = container.querySelector('canvas');
-    const img = container.querySelector('img');
-    
-    let dataURL;
-    if (canvas) {
-        dataURL = canvas.toDataURL();
-    } else if (img) {
-        dataURL = img.src;
-    } else {
+// Download QR Code canvas as PNG
+function downloadQRImage(canvas, filename) {
+    if (!canvas) {
         showToast('No QR code to download', 'error');
         return;
     }
-
     const link = document.createElement('a');
     link.download = `${filename}-${currentUser.id}.png`;
-    link.href = dataURL;
+    link.href = canvas.toDataURL('image/png');
     link.click();
-    
     showToast('QR Code downloaded!', 'success');
+}
+
+// Share QR Code via Web Share API (mobile) or fallback to download
+async function shareQRImage(canvas, filename) {
+    if (!canvas) {
+        showToast('No QR code to share', 'error');
+        return;
+    }
+    const fname = `${filename}-${currentUser.id}.png`;
+    try {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const file = new File([blob], fname, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: 'My LingapApu QR Code',
+                text: `LingapApu Senior ID QR — ${currentUser.name} (${currentUser.id})`
+            });
+            showToast('QR shared successfully!', 'success');
+        } else {
+            // Fallback: download
+            downloadQRImage(canvas, filename);
+            showToast('Sharing not supported — file downloaded instead.', 'info');
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            console.error('Share error:', err);
+            showToast('Could not share — try downloading instead.', 'error');
+        }
+    }
+}
+
+// Legacy helper kept for any direct calls
+function downloadQR(containerId, filename) {
+    const canvas = document.querySelector(`#${containerId} canvas`);
+    downloadQRImage(canvas, filename);
 }
 
 // Load Transactions
 function loadTransactions() {
     const transactions = getTransactions();
-    const transactionsTable = document.getElementById('transactionsTable');
+    const container = document.getElementById('transactionsTable');
+    const countBadge = document.getElementById('txCountBadge');
+    const statsEl = document.getElementById('txSummaryStats');
+
+    if (countBadge) countBadge.textContent = `${transactions.length} Record${transactions.length !== 1 ? 's' : ''}`;
+
+    // Summary stats
+    if (statsEl) {
+        const typeCount = {};
+        transactions.forEach(t => { const k = t.type || 'General'; typeCount[k] = (typeCount[k] || 0) + 1; });
+        const statItems = [
+            { label: 'Total Records', value: transactions.length, color: '#22c55e', bg: '#dcfce7', border: '#22c55e' },
+            { label: 'QR Scans',      value: typeCount['QR Scan'] || 0,       color: '#3b82f6', bg: '#eff6ff', border: '#3b82f6' },
+            { label: 'Benefit Claims',value: typeCount['Benefit Claim'] || 0,  color: '#8b5cf6', bg: '#f5f3ff', border: '#8b5cf6' },
+            { label: 'Other',         value: transactions.length - (typeCount['QR Scan'] || 0) - (typeCount['Benefit Claim'] || 0), color: '#f59e0b', bg: '#fffbeb', border: '#f59e0b' },
+        ];
+        statsEl.innerHTML = statItems.map(s => `
+            <div style="background:#fff;border:1px solid var(--border);border-left:3px solid ${s.border};border-radius:8px;padding:14px 16px">
+                <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">${s.label}</div>
+                <div style="font-size:24px;font-weight:800;color:${s.color}">${s.value}</div>
+            </div>
+        `).join('');
+    }
 
     if (transactions.length === 0) {
-        transactionsTable.innerHTML = `
-            <tr>
-                <td colspan="4" style="text-align:center;padding:40px;color:var(--text-muted)">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin:0 auto 12px;display:block;opacity:0.3">
-                        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                    </svg>
-                    No transactions yet
-                </td>
-            </tr>
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px 20px;background:#fff;border:1px solid var(--border);border-radius:8px">
+                <div style="width:64px;height:64px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <p style="color:#374151;font-size:16px;font-weight:700;margin:0">No transactions yet</p>
+                <p style="color:#6b7280;font-size:14px;margin:8px 0 0">Your benefit claims and QR scans will appear here</p>
+            </div>
         `;
         return;
     }
 
-    transactionsTable.innerHTML = transactions.reverse().map(t => `
-        <tr>
-            <td>${formatDateTime(new Date(t.timestamp))}</td>
-            <td><strong>${t.type || 'General Transaction'}</strong></td>
-            <td>${t.note || 'No details provided'}</td>
-            <td><span style="padding:4px 12px;background:#d1fae5;color:#059669;border-radius:12px;font-size:12px;font-weight:600">Completed</span></td>
-        </tr>
-    `).join('');
+    const typeConfig = {
+        'QR Scan':      { color:'#3b82f6', bg:'#eff6ff', icon:'<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><path d="M13 13h3v3h-3z"/>' },
+        'Benefit Claim':{ color:'#22c55e', bg:'#dcfce7', icon:'<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
+        'Registration': { color:'#8b5cf6', bg:'#f5f3ff', icon:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
+        'Verification': { color:'#f59e0b', bg:'#fffbeb', icon:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' },
+        'default':      { color:'#6b7280', bg:'#f3f4f6', icon:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>' },
+    };
+
+    const reversed = [...transactions].reverse();
+    const txTotalPages = Math.max(1, Math.ceil(reversed.length / TX_PAGE_SIZE));
+    txPage = Math.min(Math.max(1, txPage), txTotalPages);
+    const txStart = (txPage - 1) * TX_PAGE_SIZE;
+    const txPageItems = reversed.slice(txStart, txStart + TX_PAGE_SIZE);
+
+    container.innerHTML = txPageItems.map(t => {
+        const cfg = typeConfig[t.type] || typeConfig['default'];
+        const dt = new Date(t.timestamp);
+        return `
+        <div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:16px;display:flex;align-items:center;gap:14px;transition:box-shadow 0.2s" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.07)'" onmouseout="this.style.boxShadow='none'">
+            <div style="width:44px;height:44px;background:${cfg.bg};border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${cfg.color}" stroke-width="2">${cfg.icon}</svg>
+            </div>
+            <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span style="font-size:14px;font-weight:700;color:#1f2937">${t.type || 'General Transaction'}</span>
+                    <span style="padding:2px 10px;background:#d1fae5;color:#059669;border-radius:12px;font-size:11px;font-weight:700">Completed</span>
+                </div>
+                <div style="font-size:13px;color:#6b7280;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.note || 'No details provided'}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+                <div style="font-size:13px;font-weight:600;color:#374151">${dt.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</div>
+                <div style="font-size:11px;color:#9ca3af;margin-top:2px">${dt.toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    renderPagination(document.getElementById('txPagination'), txPage, txTotalPages, 'goToTxPage');
+}
+
+function goToTxPage(p) {
+    const transactions = getTransactions();
+    const totalPages = Math.max(1, Math.ceil(transactions.length / TX_PAGE_SIZE));
+    if (p < 1 || p > totalPages) return;
+    txPage = p;
+    loadTransactions();
 }
 
 // Get user transactions
@@ -510,4 +836,164 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
         toast.style.display = 'none';
     }, 3000);
+}
+
+// Photo upload modal functions
+function openPhotoUploadModal() {
+    document.getElementById('photoUploadModal').style.display = 'flex';
+    
+    // Reset camera UI
+    document.getElementById('profileCameraVideo').style.display = 'none';
+    document.getElementById('profileCameraStartButton').style.display = 'flex';
+    document.getElementById('profileCameraGuideOverlay').style.display = 'none';
+    document.getElementById('profilePhotoPreview').style.display = 'none';
+    document.getElementById('profileCapturePhotoBtn').style.display = 'none';
+    document.getElementById('profileRetakePhotoBtn').style.display = 'none';
+}
+
+// Profile camera variables
+let profileCapturedPhotoBase64 = null;
+let profileCameraVideo = null;
+let profileDetectionActive = false;
+
+function initializeProfileCamera() {
+    console.log('Profile camera initialization started...');
+    profileCameraVideo = document.getElementById('profileCameraVideo');
+    const cameraStartButton = document.getElementById('profileCameraStartButton');
+    const captureBtn = document.getElementById('profileCapturePhotoBtn');
+    const cameraNotSupported = document.getElementById('profileCameraNotSupported');
+    const guideOverlay = document.getElementById('profileCameraGuideOverlay');
+    const cameraHint = document.getElementById('profileCameraHint');
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ 
+            video: true,
+            audio: false 
+        })
+        .then(stream => {
+            console.log('Profile camera stream obtained');
+            profileCameraVideo.srcObject = stream;
+            profileCameraVideo.play();
+            profileCameraVideo.style.display = 'block';
+            cameraStartButton.style.display = 'none';
+            cameraNotSupported.style.display = 'none';
+            guideOverlay.style.display = 'block';
+            cameraHint.textContent = 'Center your face';
+            cameraHint.style.color = '#10b981';
+            captureBtn.style.display = 'block';
+        })
+        .catch(err => {
+            console.error('Profile camera access error:', err);
+            profileCameraVideo.style.display = 'none';
+            cameraStartButton.style.display = 'flex';
+            cameraNotSupported.style.display = 'flex';
+            captureBtn.style.display = 'none';
+        });
+    } else {
+        console.error('getUserMedia not supported');
+        profileCameraVideo.style.display = 'none';
+        cameraStartButton.style.display = 'flex';
+        cameraNotSupported.style.display = 'flex';
+        captureBtn.style.display = 'none';
+    }
+}
+
+function captureProfilePhoto() {
+    const canvas = document.createElement('canvas');
+    const size = Math.min(profileCameraVideo.videoWidth, profileCameraVideo.videoHeight);
+    canvas.width = size;
+    canvas.height = size;
+    
+    const ctx = canvas.getContext('2d');
+    const offsetX = (profileCameraVideo.videoWidth - size) / 2;
+    const offsetY = (profileCameraVideo.videoHeight - size) / 2;
+    ctx.drawImage(profileCameraVideo, offsetX, offsetY, size, size, 0, 0, size, size);
+    
+    profileCapturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.9);
+    
+    // Set canvas display size and draw
+    const capturedCanvas = document.getElementById('profileCapturedPhotoCanvas');
+    capturedCanvas.width = size;
+    capturedCanvas.height = size;
+    capturedCanvas.getContext('2d').drawImage(canvas, 0, 0, size, size);
+    
+    profileCameraVideo.style.display = 'none';
+    document.getElementById('profileCameraGuideOverlay').style.display = 'none';
+    document.getElementById('profilePhotoPreview').style.display = 'flex';
+    document.getElementById('profileCapturePhotoBtn').style.display = 'none';
+    document.getElementById('profileRetakePhotoBtn').style.display = 'block';
+}
+
+function retakeProfilePhoto() {
+    profileCapturedPhotoBase64 = null;
+    const capturedCanvas = document.getElementById('profileCapturedPhotoCanvas');
+    capturedCanvas.getContext('2d').clearRect(0, 0, capturedCanvas.width, capturedCanvas.height);
+    profileCameraVideo.style.display = 'block';
+    document.getElementById('profileCameraGuideOverlay').style.display = 'block';
+    document.getElementById('profilePhotoPreview').style.display = 'none';
+    document.getElementById('profileCapturePhotoBtn').style.display = 'block';
+    document.getElementById('profileRetakePhotoBtn').style.display = 'none';
+    profileDetectionActive = true;
+}
+
+function closePhotoUploadModal() {
+    document.getElementById('photoUploadModal').style.display = 'none';
+    profileCapturedPhotoBase64 = null;
+    
+    // Stop camera stream
+    if (profileCameraVideo && profileCameraVideo.srcObject) {
+        profileCameraVideo.srcObject.getTracks().forEach(track => track.stop());
+        profileCameraVideo.srcObject = null;
+    }
+    
+    // Reset UI
+    document.getElementById('profileCameraVideo').style.display = 'none';
+    document.getElementById('profileCameraStartButton').style.display = 'flex';
+    document.getElementById('profileCameraGuideOverlay').style.display = 'none';
+    document.getElementById('profilePhotoPreview').style.display = 'none';
+    document.getElementById('profileCapturePhotoBtn').style.display = 'none';
+    document.getElementById('profileRetakePhotoBtn').style.display = 'none';
+}
+
+function saveProfilePhoto() {
+    if (!profileCapturedPhotoBase64) {
+        showToast('Please capture a photo', 'error');
+        return;
+    }
+    
+    const photoBase64 = profileCapturedPhotoBase64;
+    
+    if (currentUser) {
+        currentUser.photo = photoBase64;
+        
+        // Update in localStorage cache
+        const profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
+        const index = profiles.findIndex(p => p.id === currentUser.id);
+        if (index !== -1) {
+            profiles[index] = currentUser;
+            localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+        }
+
+        // Persist to Supabase
+        if (window.db) {
+            window.db.updateSenior(currentUser.id, { photo: photoBase64 })
+                .catch(e => console.error('[saveProfilePhoto]', e));
+        }
+        
+        const idPhotoImg = document.querySelector('#idPhoto img');
+        if (idPhotoImg) idPhotoImg.src = photoBase64;
+        
+        showToast('Profile photo updated successfully');
+        closePhotoUploadModal();
+    }
+}
+
+// Load profile photo on page initialization
+function loadProfilePhoto() {
+    if (currentUser && currentUser.photo) {
+        const idPhotoImg = document.querySelector('#idPhoto img');
+        if (idPhotoImg) {
+            idPhotoImg.src = currentUser.photo;
+        }
+    }
 }

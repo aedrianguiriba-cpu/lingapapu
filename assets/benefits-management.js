@@ -2,9 +2,27 @@
 const BENEFITS_STORAGE_KEY = 'lingap_benefits_v1';
 let benefits = [];
 let editingBenefitIndex = null;
+let benefitsPage = 1;
+const BENEFITS_PAGE_SIZE = 5;
 
 // Initialize benefits with default data
-function initBenefits() {
+async function initBenefits() {
+  // Try Supabase first
+  if (window.db) {
+    try {
+      const data = await window.db.getBenefits();
+      if (data && data.length > 0) {
+        benefits = data;
+        localStorage.setItem(BENEFITS_STORAGE_KEY, JSON.stringify(benefits));
+        renderBenefitsList();
+        return;
+      }
+    } catch (e) {
+      console.warn('[benefits] Supabase load failed, using localStorage/defaults', e);
+    }
+  }
+
+  // Fallback: localStorage
   const stored = localStorage.getItem(BENEFITS_STORAGE_KEY);
   if (stored) {
     benefits = JSON.parse(stored);
@@ -58,6 +76,10 @@ function initBenefits() {
       }
     ];
     saveBenefits();
+    // Upload defaults to Supabase
+    if (window.db) {
+      benefits.forEach(b => window.db.addBenefit(b).catch(() => {}));
+    }
   }
   renderBenefitsList();
 }
@@ -71,7 +93,7 @@ function saveBenefits() {
 function renderBenefitsList() {
   const container = document.getElementById('benefitsList');
   if (!container) return;
-  
+
   if (benefits.length === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:60px 20px;color:var(--text-light)">
@@ -86,17 +108,20 @@ function renderBenefitsList() {
     updateBenefitsCount();
     return;
   }
-  
+
   container.innerHTML = '';
-  
-  benefits.forEach((benefit, index) => {
+  const totalPages = Math.max(1, Math.ceil(benefits.length / BENEFITS_PAGE_SIZE));
+  benefitsPage = Math.min(Math.max(1, benefitsPage), totalPages);
+  const start = (benefitsPage - 1) * BENEFITS_PAGE_SIZE;
+  const pageItems = benefits.slice(start, start + BENEFITS_PAGE_SIZE);
+
+  pageItems.forEach((benefit, pageIdx) => {
+    const index = start + pageIdx;
     const card = document.createElement('div');
     card.className = 'card';
     card.style.cssText = 'padding:16px;background:#fff;border:1px solid var(--border);transition:all 0.2s';
-    
     const statusColor = benefit.active ? '#10b981' : '#9ca3af';
     const statusText = benefit.active ? 'Active' : 'Inactive';
-    
     card.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
         <div style="flex:1">
@@ -136,11 +161,18 @@ function renderBenefitsList() {
         <span style="font-size:12px;color:var(--text-light)">Created: ${new Date(benefit.dateCreated).toLocaleDateString()}</span>
       </div>
     `;
-    
     container.appendChild(card);
   });
-  
+
+  renderPagination(document.getElementById('benefitsPagination'), benefitsPage, totalPages, 'goToBenefitsPage');
   updateBenefitsCount();
+}
+
+function goToBenefitsPage(p) {
+  const totalPages = Math.max(1, Math.ceil((window.benefits || []).length / BENEFITS_PAGE_SIZE));
+  if (p < 1 || p > totalPages) return;
+  benefitsPage = p;
+  renderBenefitsList();
 }
 
 // Update benefits count badge
@@ -184,6 +216,8 @@ function addBenefit() {
       amount,
       frequency
     };
+    const updated = benefits[editingBenefitIndex];
+    if (window.db) window.db.updateBenefit(updated.id, { name, description, amount, frequency }).catch(e => console.error('[benefits updateBenefit]', e));
     showSuccessToast('Benefit updated successfully');
     editingBenefitIndex = null;
     document.getElementById('addBenefit').innerHTML = 'Add Benefit';
@@ -199,6 +233,7 @@ function addBenefit() {
       dateCreated: new Date().toISOString().split('T')[0]
     };
     benefits.push(newBenefit);
+    if (window.db) window.db.addBenefit(newBenefit).catch(e => console.error('[benefits addBenefit]', e));
     showSuccessToast('Benefit added successfully');
   }
   
@@ -273,10 +308,12 @@ function confirmDeleteBenefit() {
   if (deletingBenefitIndex === null) return;
   
   const benefit = benefits[deletingBenefitIndex];
+  const benefitId = benefit.id;
   benefits.splice(deletingBenefitIndex, 1);
   
   saveBenefits();
   renderBenefitsList();
+  if (window.db) window.db.deleteBenefit(benefitId).catch(e => console.error('[benefits deleteBenefit]', e));
   closeDeleteBenefitModal();
   
   showSuccessToast(`${benefit.name} has been deleted`);

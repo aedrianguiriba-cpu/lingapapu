@@ -1,7 +1,14 @@
+// Persistent chart instances so we can destroy before re-creating
+let _activityChart = null;
+let _genderChart = null;
+let _ageChart = null;
+
 // Reports generation functions
 function populateReports() {
-  // Get the data from localStorage using the correct key
-  const seniors = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+  // Use global profiles array if available (loaded from Supabase by initAdmin), otherwise fall back to localStorage
+  const seniors = (window.profiles && window.profiles.length > 0)
+    ? window.profiles
+    : JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
   
   // Calculate date range
   const thirtyDaysAgo = new Date();
@@ -55,10 +62,11 @@ function populateReports() {
   // Create activity chart
   const activityCtx = document.getElementById('activityChart');
   if (activityCtx) {
+    if (_activityChart) { _activityChart.destroy(); _activityChart = null; }
     const dates = Object.keys(activityByDay).sort();
     const counts = dates.map(date => activityByDay[date]);
     
-    new Chart(activityCtx, {
+    _activityChart = new Chart(activityCtx, {
       type: 'line',
       data: {
         labels: dates.map(date => new Date(date).toLocaleDateString()),
@@ -116,7 +124,8 @@ function populateReports() {
   // Create gender distribution chart
   const genderCtx = document.getElementById('genderChart');
   if (genderCtx) {
-    new Chart(genderCtx, {
+    if (_genderChart) { _genderChart.destroy(); _genderChart = null; }
+    _genderChart = new Chart(genderCtx, {
       type: 'doughnut',
       data: {
         labels: ['Male', 'Female'],
@@ -150,7 +159,8 @@ function populateReports() {
   // Create age distribution chart
   const ageCtx = document.getElementById('ageChart');
   if (ageCtx) {
-    new Chart(ageCtx, {
+    if (_ageChart) { _ageChart.destroy(); _ageChart = null; }
+    _ageChart = new Chart(ageCtx, {
       type: 'bar',
       data: {
         labels: Object.keys(ageGroups),
@@ -208,13 +218,15 @@ function populateReports() {
     return lastTransaction >= thirtyDaysAgo;
   }).length;
 
-  document.getElementById('totalSeniors').textContent = totalSeniors;
-  document.getElementById('activeSeniors').textContent = activeSeniors;
+  const totalEl = document.getElementById('totalSeniors');
+  const activeEl = document.getElementById('activeSeniors');
+  if (totalEl) totalEl.textContent = totalSeniors;
+  if (activeEl) activeEl.textContent = activeSeniors;
 }
 
-// Call setupTabs when the document is loaded
+// reports.js is loaded alongside script.js which already calls setupTabs()
+// in its own DOMContentLoaded handler — no need to call it again here.
 document.addEventListener('DOMContentLoaded', () => {
-  setupTabs();
   // Initial population of reports if we're on the reports tab
   if (window.location.hash === '#reports') {
     populateReports();
