@@ -77,6 +77,24 @@ function viewRegistrationDetails(index) {
           <span style="font-size:15px;color:var(--text);font-weight:500;line-height:1.5">${reg.address}</span>
         </div>
       </div>
+
+      ${reg.barangay ? `
+      <div>
+        <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-light);margin-bottom:8px;font-weight:600">Barangay</label>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span style="font-size:15px;color:var(--text);font-weight:500">${reg.barangay}</span>
+        </div>
+      </div>` : ''}
+
+      ${reg.civilStatus || reg.civil_status ? `
+      <div>
+        <label style="display:block;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-light);margin-bottom:8px;font-weight:600">Civil Status</label>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span style="font-size:15px;color:var(--text);font-weight:500">${reg.civilStatus || reg.civil_status}</span>
+        </div>
+      </div>` : ''}
     </div>
     
     <div style="margin-top:24px;padding:20px;background:linear-gradient(to bottom,#dbeafe,#fff);border-radius:12px;border:2px solid #93c5fd">
@@ -139,14 +157,17 @@ async function confirmApproveRegistration() {
     birthday:     reg.birthday,
     address:      reg.address,
     contact:      reg.contact,
+    gender:       reg.gender || null,
+    civilStatus:  reg.civilStatus || reg.civil_status || null,
+    barangay:     reg.barangay || null,
     id:           `SC${String(profiles.length + 1).padStart(5, '0')}`,
     memberSince:  new Date().toISOString().split('T')[0],
-    status:       'Active',
+    status:       'active',
     balance:      0,
     transactions: [],
     username:     reg.username,
     password:     reg.password,
-    birth:        reg.birth,
+    birth:        reg.birth || reg.birthday,
     photo:        reg.photo || undefined
   };
 

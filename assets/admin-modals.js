@@ -29,7 +29,7 @@ function _deleteSeniorInSupabase(id) {
 }
 
 // Senior Details Modal
-function viewSeniorDetails(idx) {
+async function viewSeniorDetails(idx) {
   const p = profiles[idx];
   if(!p) return;
   
@@ -39,6 +39,21 @@ function viewSeniorDetails(idx) {
     alert(`Senior Details:\n\nID: ${p.id}\nName: ${p.name}\nBirth Date: ${p.birth}\nAge: ${calculateAge(p.birth)}\nGender: ${p.gender || 'N/A'}\nContact: ${p.contact || 'N/A'}\nEmail: ${p.email || 'N/A'}\nAddress: ${p.address || 'N/A'}\nBenefits: ${p.benefits || 'N/A'}\nNotes: ${p.notes || 'N/A'}`);
     return;
   }
+
+  // Load user_benefits rows for richer display (assigned_by, assigned_at)
+  let ubRows = [];
+  if (window.db && p.id) {
+    try { ubRows = await window.db.getUserBenefits(p.id); } catch(e) {}
+  }
+  // Merge user_benefits names with seniors.benefits snapshot so we always show something
+  const ubNames = ubRows.map(r => r.benefit_name);
+  const snapshotNames = Array.isArray(p.benefits)
+      ? p.benefits
+      : (typeof p.benefits === 'string' && p.benefits ? p.benefits.split(',').map(b=>b.trim()).filter(Boolean) : []);
+  // Union: user_benefits first (authoritative), then any snapshot names not yet in it
+  const combinedNames = [...ubNames, ...snapshotNames.filter(n => !ubNames.includes(n))];
+  // Build a lookup map for detail info
+  const ubMap = Object.fromEntries(ubRows.map(r => [r.benefit_name, r]));
   
   const age = calculateAge(p.birth);
   const subtitle = document.getElementById('detailsModalSubtitle');
@@ -101,6 +116,34 @@ function viewSeniorDetails(idx) {
               </div>
             </div>
           </div>
+
+          <div style="padding:20px;background:var(--bg);border-radius:12px;border:2px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              <div style="width:40px;height:40px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border-radius:10px;display:flex;align-items:center;justify-content:center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase">Barangay</div>
+                <div style="font-size:14px;font-weight:600;margin-top:4px">${p.barangay || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:20px;background:var(--bg);border-radius:12px;border:2px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              <div style="width:40px;height:40px;background:linear-gradient(135deg,#ec4899,#be185d);border-radius:10px;display:flex;align-items:center;justify-content:center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase">Civil Status</div>
+                <div style="font-size:14px;font-weight:600;margin-top:4px">${p.civilStatus || p.civil_status || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
         </div>
         
         <div style="padding:20px;background:linear-gradient(to bottom,#fff,var(--bg));border-radius:12px;border:2px solid var(--border)">
@@ -112,7 +155,18 @@ function viewSeniorDetails(idx) {
             </div>
             <div style="font-size:16px;font-weight:700">Benefits Enrolled</div>
           </div>
-          <div style="font-size:15px">${p.benefits || 'None'}</div>
+          ${(() => {
+            if (!combinedNames.length) return '<div style="font-size:14px;color:#9ca3af">No benefits enrolled yet</div>';
+            return combinedNames.map(name => {
+              const ub = ubMap[name];
+              const dateStr = ub ? new Date(ub.assigned_at).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric'}) : null;
+              const byStr = ub ? (ub.assigned_by || 'OSCA') : null;
+              return `<div style="display:inline-flex;align-items:center;gap:6px;margin:3px 4px 3px 0;padding:4px 10px;background:#dcfce7;border:1px solid #86efac;color:#15803d;border-radius:12px;font-size:13px;font-weight:600">
+                <span>${name}</span>
+                ${dateStr ? `<span style="font-size:11px;font-weight:400;color:#4ade80" title="Assigned by ${byStr} on ${dateStr}">• ${dateStr}</span>` : ''}
+              </div>`;
+            }).join('');
+          })()}
         </div>
         
         ${p.notes ? `
@@ -189,7 +243,34 @@ function editSenior(idx) {
   document.getElementById('editSeniorContact').value = p.contact || '';
   document.getElementById('editSeniorEmail').value = p.email || '';
   document.getElementById('editSeniorAddress').value = p.address || '';
-  document.getElementById('editSeniorBenefits').value = p.benefits || '';
+  const csEl = document.getElementById('editSeniorCivilStatus');
+  if (csEl) csEl.value = p.civilStatus || p.civil_status || '';
+  const brEl = document.getElementById('editSeniorBarangay');
+  if (brEl) brEl.value = p.barangay || '';
+  // Populate benefits checkboxes
+  const benefitsContainer = document.getElementById('editSeniorBenefitsContainer');
+  if (benefitsContainer) {
+    const BENEFITS_KEY = 'lingap_benefits_v1';
+    const DEFAULT_BENEFIT_NAMES = [
+      'Social Pension Program', 'Medical/Dental Assistance', 'Burial Assistance',
+      'Food Assistance (Grocery Package)', 'Housing Assistance', '20% Senior Discount',
+      'Monthly Pension', 'Medical Subsidy', 'Transport Allowance', 'Birthday Gift',
+      'Grocery Voucher', 'Free Medical Checkup', 'Dental Services', 'Eye Care Assistance',
+      'Emergency Assistance Fund', 'Senior Learning Program', 'Home Repair Assistance',
+      'Nutrition Program', 'Recreation & Socialization', 'Holiday Cash Gift', 'Burial Assistance'
+    ];
+    let allBenefits = JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    const benefitNames = allBenefits.length > 0
+      ? [...new Set(allBenefits.map(b => b.name))]
+      : [...new Set(DEFAULT_BENEFIT_NAMES)];
+    const enrolled = Array.isArray(p.benefits) ? p.benefits
+      : (typeof p.benefits === 'string' && p.benefits ? p.benefits.split(',').map(b => b.trim()).filter(Boolean) : []);
+    benefitsContainer.innerHTML = benefitNames.map(name => {
+      const checked = enrolled.includes(name) ? 'checked' : '';
+      const safeId = 'ben_' + name.replace(/[^a-z0-9]/gi, '_');
+      return `<label for="${safeId}" style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:#374151;background:${checked ? '#dcfce7' : '#f9fafb'};border:1px solid ${checked ? '#86efac' : '#f3f4f6'};transition:all 0.15s" onmouseover="this.style.background='${checked ? '#dcfce7' : '#eff6ff'}';" onmouseout="this.style.background='${checked ? '#dcfce7' : '#f9fafb'}'"><input type="checkbox" id="${safeId}" value="${name}" ${checked} onchange="this.closest('label').style.background=this.checked?'#dcfce7':'#f9fafb';this.closest('label').style.borderColor=this.checked?'#86efac':'#f3f4f6'" style="width:15px;height:15px;accent-color:#22c55e;flex-shrink:0">${name}</label>`;
+    }).join('');
+  }
   document.getElementById('editSeniorNotes').value = p.notes || '';
   
   modal.style.display = 'flex';
@@ -212,7 +293,13 @@ function saveEditedSenior(event) {
   profiles[idx].contact  = document.getElementById('editSeniorContact').value.trim();
   profiles[idx].email    = document.getElementById('editSeniorEmail').value.trim();
   profiles[idx].address  = document.getElementById('editSeniorAddress').value.trim();
-  profiles[idx].benefits = document.getElementById('editSeniorBenefits').value.trim();
+  const _cs = document.getElementById('editSeniorCivilStatus');
+  if (_cs) profiles[idx].civilStatus = _cs.value;
+  const _br = document.getElementById('editSeniorBarangay');
+  if (_br) profiles[idx].barangay = _br.value.trim();
+  // Collect checked benefits as an array
+  const checkedBoxes = document.querySelectorAll('#editSeniorBenefitsContainer input[type=checkbox]:checked');
+  profiles[idx].benefits = Array.from(checkedBoxes).map(cb => cb.value);
   profiles[idx].notes    = document.getElementById('editSeniorNotes').value.trim();
 
   saveProfiles();
@@ -223,11 +310,20 @@ function saveEditedSenior(event) {
       birth:    profiles[idx].birth,
       gender:   profiles[idx].gender,
       contact:  profiles[idx].contact,
-      email:    profiles[idx].email,
       address:  profiles[idx].address,
+      civilStatus: profiles[idx].civilStatus || null,
+      barangay: profiles[idx].barangay || null,
       benefits: profiles[idx].benefits,
       notes:    profiles[idx].notes
     }).catch(e => console.error('[editSenior]', e));
+
+    // Sync benefit assignments to user_benefits table
+    if (profiles[idx].benefits.length > 0) {
+      const adminSession = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+      const assignedBy   = adminSession.username || adminSession.id || 'admin';
+      window.db.addUserBenefits(profiles[idx].id, profiles[idx].benefits, assignedBy)
+        .catch(e => console.warn('[editSenior] user_benefits sync failed:', e));
+    }
   }
   filterSeniors();
   updateSeniorStats();
@@ -256,11 +352,17 @@ function showSeniorQRCode(seniorId) {
   const container = document.getElementById('qrCodeContainer');
   if(container) {
     container.innerHTML = '';
-    
-    // Check if QRCode library is available (qrcode.js from CDN)
-    if(typeof QRCode !== 'undefined' && typeof QRCode.toCanvas === 'function') {
+
+    // --- Show stored QR from database if available ---
+    if (senior.qr_code) {
+      const img = document.createElement('img');
+      img.src = senior.qr_code;
+      img.style.cssText = 'width:256px;height:256px;display:block;border-radius:8px';
+      container.appendChild(img);
+      console.log('[QR] Loaded stored QR from database for', seniorId);
+    } else if(typeof QRCode !== 'undefined' && typeof QRCode.toCanvas === 'function') {
+      // --- Generate fresh QR then save to database ---
       try {
-        // Create QR code with senior's full information as JSON
         const qrData = JSON.stringify({
           id: senior.id,
           name: senior.name,
@@ -268,25 +370,31 @@ function showSeniorQRCode(seniorId) {
           contact: senior.contact
         });
         
-        // Create canvas element
         const canvas = document.createElement('canvas');
         container.appendChild(canvas);
         
-        // Generate QR code using qrcode.js toCanvas method
         QRCode.toCanvas(canvas, qrData, {
           width: 256,
           margin: 2,
-          color: {
-            dark: '#000000',
-            light: '#ffffff'
-          },
+          color: { dark: '#000000', light: '#ffffff' },
           errorCorrectionLevel: 'H'
         }, function(error) {
           if(error) {
             console.error('QR generation error:', error);
             container.innerHTML = `<div style="padding:40px;color:#ef4444;text-align:center">Error generating QR code</div>`;
           } else {
-            console.log('QR Code generated successfully for:', seniorId);
+            const dataURL = canvas.toDataURL();
+            // Persist to Supabase
+            if (window.db) {
+              window.db.saveQRCode(seniorId, dataURL).then(res => {
+                if (res) {
+                  // Update local profiles cache so next open in same session uses stored QR
+                  const p = profiles.find(x => x.id === seniorId);
+                  if (p) p.qr_code = dataURL;
+                  console.log('[QR] Admin QR saved to database for', seniorId);
+                }
+              }).catch(e => console.warn('[QR] Could not save QR to database:', e));
+            }
           }
         });
       } catch(error) {

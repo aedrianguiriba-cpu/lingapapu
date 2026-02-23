@@ -7,7 +7,7 @@ class QRScanner {
         this.isScanning = false;
         this.stream = null;
         this.canvas = document.createElement('canvas');
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
     }
     
     pause() {
@@ -311,7 +311,7 @@ function showCameraSpinner(show = true) {
 
 // Initialize scanner when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.location.pathname.includes('admin.html')) {
+    if (/\/admin(\/(index\.html)?)?$/i.test(window.location.pathname)) {
         new ScannerUI();
     }
 });

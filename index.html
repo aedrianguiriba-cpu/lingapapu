@@ -521,54 +521,6 @@
   .login-btn:active {
     background: #15803d;
   }
-  .demo-box {
-    margin-top: 32px;
-    padding: 18px 16px;
-    background: #f0fdf4;
-    border-radius: 8px;
-    border: 1px solid #bbf7d0;
-    transition: all 0.2s ease;
-  }
-  .demo-box:hover {
-    background: #dcfce7;
-    border-color: #86efac;
-  }
-  .demo-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .demo-icon {
-    width: 32px;
-    height: 32px;
-    background: #16a34a;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: white;
-    font-size: 16px;
-  }
-  .demo-title {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: #155e3d;
-    letter-spacing: 0;
-  }
-  .demo-creds {
-    font-size: 12px;
-    line-height: 2;
-    color: #475569;
-    margin: 0;
-    font-weight: 400;
-  }
-  .demo-creds strong {
-    color: #1e293b;
-    font-weight: 700;
-  }
   .error-msg {
     margin-top: 16px;
     padding: 13px 15px;
@@ -771,54 +723,6 @@
   .login-btn:active {
     background: #166534;
   }
-  .demo-box {
-    margin-top: 32px;
-    padding: 18px 16px;
-    background: #f0fdf4;
-    border-radius: 8px;
-    border: 1px solid #bbf7d0;
-    transition: all 0.2s ease;
-  }
-  .demo-box:hover {
-    background: #dcfce7;
-    border-color: #86efac;
-  }
-  .demo-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .demo-icon {
-    width: 32px;
-    height: 32px;
-    background: #16a34a;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: white;
-    font-size: 16px;
-  }
-  .demo-title {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: #155e3d;
-    letter-spacing: 0;
-  }
-  .demo-creds {
-    font-size: 12px;
-    line-height: 2;
-    color: #475569;
-    margin: 0;
-    font-weight: 400;
-  }
-  .demo-creds strong {
-    color: #1e293b;
-    font-weight: 700;
-  }
   .error-msg {
     margin-top: 16px;
     padding: 13px 15px;
@@ -921,51 +825,6 @@
   }
   .login-card {
     animation: fadeIn 0.4s ease-out;
-  }
-  .demo-box {
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.1);
-    transition: all 0.3s ease;
-  }
-  .demo-box:hover {
-    background: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.5);
-  }
-  .demo-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .demo-icon {
-    width: 32px;
-    height: 32px;
-    background: #22c55e;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: white;
-    font-size: 16px;
-  }
-  .demo-title {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: #e8f5e9;
-    letter-spacing: 0;
-  }
-  .demo-creds {
-    font-size: 12px;
-    line-height: 2;
-    color: #cbd5e1;
-    margin: 0;
-    font-weight: 400;
-  }
-  .demo-creds strong {
-    color: #e8f5e9;
-    font-weight: 700;
   }
   .error-msg {
     margin-top: 16px;
@@ -1101,15 +960,6 @@
       font-size: 15px;
       margin-top: 8px;
     }
-    .demo-box {
-      padding: 18px;
-      margin-top: 28px;
-      border-radius: 14px;
-    }
-    .demo-creds {
-      font-size: 12px;
-      line-height: 1.8;
-    }
     .auth-links {
       flex-direction: column;
       gap: 12px;
@@ -1221,23 +1071,6 @@ ORPHAN_CSS_REMOVED-->
         <a href="#" class="auth-link" onclick="showSignupForm(); return false;">Senior Signup</a>
         <a href="#" class="auth-link" onclick="showForgotPasswordForm(); return false;">Forgot Password?</a>
       </div>
-      
-      <div class="demo-box">
-        <div class="demo-header">
-          <div class="demo-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-              <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
-            </svg>
-          </div>
-          <p class="demo-title">Demo Credentials</p>
-        </div>
-        <p class="demo-creds">
-          <strong>Admin:</strong> admin / 1234<br>
-          <strong>OSCA Staff:</strong> osca / 1234<br>
-          <strong>Merchant:</strong> merchant / 1234<br>
-          <strong>Senior:</strong> sofia / 1234
-        </p>
-      </div>
     </form>
 
     <!-- Signup Form -->
@@ -1278,8 +1111,58 @@ ORPHAN_CSS_REMOVED-->
         </div>
 
         <div class="input-group">
-          <label>Address</label>
-          <input id="signupAddress" type="text" placeholder="Complete address" required>
+          <label>City (Pampanga)</label>
+          <select id="signupAddress" required style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;color:var(--text)">
+            <option value="">Select City</option>
+            <option value="Arayat">Arayat</option>
+            <option value="Candaba">Candaba</option>
+            <option value="Floridablanca">Floridablanca</option>
+            <option value="Guagua">Guagua</option>
+            <option value="Lubao">Lubao</option>
+            <option value="Mabalacat">Mabalacat</option>
+            <option value="Magalang">Magalang</option>
+            <option value="Masantol">Masantol</option>
+            <option value="Mexico">Mexico</option>
+            <option value="Minalin">Minalin</option>
+            <option value="Porac">Porac</option>
+            <option value="San Fernando">San Fernando</option>
+            <option value="San Luis">San Luis</option>
+            <option value="Santa Ana">Santa Ana</option>
+            <option value="Santa Rita">Santa Rita</option>
+            <option value="Sasmuan">Sasmuan</option>
+            <option value="Capas">Capas</option>
+            <option value="Concepcion">Concepcion</option>
+            <option value="Macabebe">Macabebe</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>Gender</label>
+          <select id="signupGender" required style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;color:var(--text)">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+            <option value="Prefer not to say">Prefer not to say</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>Civil Status</label>
+          <select id="signupCivilStatus" required style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;color:var(--text)">
+            <option value="">Select Civil Status</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+            <option value="Widowed">Widowed</option>
+            <option value="Separated">Separated</option>
+            <option value="Annulled">Annulled</option>
+            <option value="Divorced">Divorced</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>Barangay</label>
+          <input id="signupBarangay" type="text" placeholder="e.g. Poblacion" required style="width:100%">
         </div>
 
         <div id="signupStep1Msg" class="error-msg" style="display:none"></div>
@@ -1499,12 +1382,15 @@ ORPHAN_CSS_REMOVED-->
     const birth   = document.getElementById('signupBirth').value;
     const contact = document.getElementById('signupContact').value.trim();
     const address = document.getElementById('signupAddress').value.trim();
+    const gender  = document.getElementById('signupGender').value.trim();
+    const civilStatus = document.getElementById('signupCivilStatus').value.trim();
+    const barangay    = document.getElementById('signupBarangay').value.trim();
     const msgEl   = document.getElementById('signupStep1Msg');
 
     msgEl.style.display = 'none';
     msgEl.textContent = '';
 
-    if (!name || !birth || !contact || !address) {
+    if (!name || !birth || !contact || !address || !gender || !civilStatus || !barangay) {
       msgEl.textContent = 'Please fill in all fields.';
       msgEl.style.display = 'block';
       return;
@@ -1792,7 +1678,10 @@ ORPHAN_CSS_REMOVED-->
     const name = document.getElementById('signupName').value.trim();
     const birthDate = document.getElementById('signupBirth').value;
     const contact = document.getElementById('signupContact').value.trim();
-    const address = document.getElementById('signupAddress').value.trim();
+    const city = document.getElementById('signupAddress').value.trim();
+    const gender = document.getElementById('signupGender').value;  // Don't trim dropdown values
+    const civilStatus = document.getElementById('signupCivilStatus').value;
+    const barangay    = document.getElementById('signupBarangay').value.trim();
     const username = document.getElementById('signupUsername').value.trim().toLowerCase();
     const password = document.getElementById('signupPassword').value;
     const confirmPassword = document.getElementById('signupConfirmPassword').value;
@@ -1805,7 +1694,7 @@ ORPHAN_CSS_REMOVED-->
     successEl.style.display = 'none';
     
     // Validation
-    if (!name || !birthDate || !contact || !address || !username || !password || !confirmPassword) {
+    if (!name || !birthDate || !contact || !city || !gender || !username || !password || !confirmPassword) {
       msgEl.textContent = 'All fields are required';
       msgEl.style.display = 'block';
       return;
@@ -1860,15 +1749,19 @@ ORPHAN_CSS_REMOVED-->
       birth: birthDate,
       age: age,
       contact: contact,
-      address: address,
+      address: city,
       username: username,
       password: password,
       benefits: [],
       registrationDate: new Date().toISOString(),
       status: 'pending',
-      gender: 'Not specified',
+      gender: gender,
+      civilStatus: civilStatus,
+      barangay: barangay,
       photo: capturedPhotoBase64
     };
+    
+    console.log('[signup] Form data collected:', {name, birthDate, contact, city, gender, username}, 'Gender value:', gender);
     
     // Upload to Supabase first
     const submitBtn = this.querySelector('button[type="submit"]') || document.querySelector('#signupForm button');

@@ -63,8 +63,8 @@ function setupTabs() {
   const hash = window.location.hash.replace('#', '');
   
   // Determine default tab based on page
-  const isMerchantPage = window.location.pathname.includes('merchant.html');
-  const isOSCAPage = window.location.pathname.includes('osca.html');
+  const isMerchantPage = /\/merchant(\.html)?$/i.test(window.location.pathname);
+  const isOSCAPage = /\/osca(\.html)?$/i.test(window.location.pathname);
   const merchantTabs = ['scanner', 'history', 'profile'];
   const oscaTabs = ['verify', 'update', 'transactions', 'eligibility', 'profile'];
   const adminTabs = ['dashboard', 'seniors', 'registrations', 'benefits', 'staff', 'profile'];
@@ -94,9 +94,12 @@ function setupTabs() {
 }
 
 function highlightActiveNav(){
-  const current = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  // Normalise both sides — strip .html, treat empty path as 'index'
+  const rawPage = location.pathname.split('/').pop() || '';
+  const current = (rawPage.replace(/\.html$/i, '') || 'index').toLowerCase();
   document.querySelectorAll('.navlink').forEach(a=>{
-    const href = (a.getAttribute('href')||'').split('/').pop().toLowerCase();
+    const rawHref = (a.getAttribute('href')||'').split('/').pop() || '';
+    const href = (rawHref.replace(/\.html$/i, '') || 'index').toLowerCase();
     if(href === current) a.classList.add('active'); else a.classList.remove('active');
   });
 }
@@ -198,9 +201,9 @@ function setupTransactionModal() {
       }, 10);
     });
 
-    // Form submit handler
+    // Form submit handler (async to handle database saves)
     if (form) {
-      form.addEventListener('submit', (e) => {
+      form.addEventListener('submit', async (e) => {
       e.preventDefault();
       modalDebug('form submit triggered');
     
@@ -251,11 +254,20 @@ function setupTransactionModal() {
     // Save updated profiles
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
 
-    // Save to Supabase
+    // Save to Supabase - AWAIT the transaction save to ensure it completes
     if (window.db) {
-      window.db.addTransaction(transaction).catch(e => console.error('[saveTransaction]', e));
-      // Also update the senior's profile in Supabase with latest transactions list
-      window.db.updateSenior(seniorId, { transactions: profiles[seniorIdx].transactions }).catch(() => {});
+      try {
+        const result = await window.db.addTransaction(transaction);
+        if (!result) {
+          console.warn('[saveTransaction] Transaction save returned null/falsy');
+          modalDebug('Warning: Transaction may not have saved to Supabase', 'warn');
+        } else {
+          modalDebug('Transaction saved successfully: ' + result.id);
+        }
+      } catch (e) {
+        console.error('[saveTransaction] Failed to save transaction to Supabase:', e);
+        modalDebug('Error: Transaction failed to save: ' + (e && e.message), 'error');
+      }
     }
 
     // Save to local transactions store
@@ -636,19 +648,8 @@ function setupNavToggle(){
   });
 }
 
-const DEMO_USERS = [
-  {role:'admin', username:'admin', password:'1234'},
-  {role:'osca', username:'osca', password:'1234'},
-  {role:'osca', username:'maria', password:'1234'},
-  {role:'merchant', username:'merchant', password:'1234'},
-  {role:'merchant', username:'store1', password:'1234'},
-  {role:'merchant', username:'pharmacy', password:'1234'},
-  {role:'senior', username:'sofia', password:'1234', id:'LGAPU-021'},
-  {role:'senior', username:'miguel', password:'1234', id:'LGAPU-022'},
-  {role:'senior', username:'rosa', password:'1234', id:'LGAPU-004'},
-  {role:'senior', username:'manuel', password:'1234', id:'LGAPU-005'},
-  {role:'senior', username:'elena', password:'1234', id:'LGAPU-006'}
-];
+// Demo users removed - use Supabase authentication only
+const DEMO_USERS = [];
 const STORAGE_KEY = 'lingap_profiles_v3';
 const TRANSACTIONS_KEY = 'lingap_transactions';
 let profiles = [];
@@ -792,55 +793,72 @@ function seedTransactions() {
 }
 
 async function loadProfiles(){
-  if (window.db) {
-    try {
-      const rows = await window.db.getSeniors();
-      if (rows && rows.length > 0) {
-        // Also fetch all transactions so profile.transactions arrays are populated
-        let allTxns = [];
-        try { allTxns = await window.db.getTransactions(); } catch(_){}
+  try {
+    // Check if db is available
+    if (!window.db) {
+      console.error('[loadProfiles] window.db is not initialized');
+      throw new Error('Supabase client not initialized - check supabase-config.js');
+    }
 
-        // Normalise Supabase snake_case fields to the camelCase the UI expects
-        profiles = rows.map(r => {
-          const seniorTxns = allTxns
-            .filter(t => (t.senior_id || t.seniorId) === r.id)
-            .map(t => ({
-              ...t,
-              seniorId:   t.senior_id   || t.seniorId,
-              seniorName: t.senior_name || t.seniorName,
-              merchantId: t.merchant_id || t.merchantId,
-              scanDate:   t.scan_date   || t.scanDate
-            }));
-          return {
-            ...r,
-            registrationDate: r.registration_date || r.registrationDate || null,
-            benefits: Array.isArray(r.benefits) ? r.benefits : [],
-            transactions: seniorTxns.length > 0 ? seniorTxns : (r.transactions || [])
-          };
-        });
-        // Sync local cache so synchronous helpers still work
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
-        if (allTxns.length) localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(allTxns));
-        console.log(`[loadProfiles] Loaded ${profiles.length} seniors + ${allTxns.length} transactions from Supabase`);
-        return;
+    if (!window.supabaseClient) {
+      console.error('[loadProfiles] Supabase client not available');
+      throw new Error('Supabase client not found - CDN may not have loaded');
+    }
+
+    console.log('[loadProfiles] Starting data load from Supabase...');
+    const rows = await window.db.getSeniors();
+    
+    if (rows && rows.length > 0) {
+      console.log(`[loadProfiles] Loaded ${rows.length} seniors from Supabase`);
+      
+      // Also fetch all transactions so profile.transactions arrays are populated
+      let allTxns = [];
+      try { 
+        allTxns = await window.db.getTransactions();
+        console.log(`[loadProfiles] Loaded ${allTxns.length} transactions from Supabase`);
+      } catch(txnErr) {
+        console.warn('[loadProfiles] Transaction load failed:', txnErr);
       }
-    } catch (e) {
-      console.warn('[loadProfiles] Supabase fetch failed, seeding from local data', e);
+
+      // Normalise Supabase snake_case fields to the camelCase the UI expects
+      profiles = rows.map(r => {
+        const seniorTxns = allTxns
+          .filter(t => (t.senior_id || t.seniorId) === r.id)
+          .map(t => ({
+            ...t,
+            seniorId:   t.senior_id   || t.seniorId,
+            seniorName: t.senior_name || t.seniorName,
+            merchantId: t.merchant_id || t.merchantId,
+            scanDate:   t.scan_date   || t.scanDate
+          }));
+        return {
+          ...r,
+          registrationDate: r.registration_date || r.registrationDate || null,
+          benefits: Array.isArray(r.benefits) ? r.benefits : [],
+          transactions: seniorTxns.length > 0 ? seniorTxns : (r.transactions || [])
+        };
+      });
+      // Sync local cache so synchronous helpers still work
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+      if (allTxns.length) localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(allTxns));
+      
+      console.log(`[loadProfiles] SUCCESS: Loaded ${profiles.length} seniors with transactions`);
+      return;
+    } else {
+      console.warn('[loadProfiles] Supabase returned no seniors');
+    }
+  } catch (e) {
+    console.error('[loadProfiles] Database error:', e.message || e);
+    const statusEl = document.getElementById('dbStatus');
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.innerHTML = `<strong>⚠️ Database Error:</strong> ${e.message || 'Failed to connect to database'}. Check console for details.`;
     }
   }
-  // Fallback: seed localStorage with demo data and upload to Supabase
-  const raw = localStorage.getItem(STORAGE_KEY);
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(TRANSACTIONS_KEY);
-  localStorage.removeItem('lingap_benefits_v1');
-  seedProfiles();
-  profiles = JSON.parse(localStorage.getItem(STORAGE_KEY));
-  // Upload seed data to Supabase in the background
-  if (window.db) {
-    window.db.upsertSeniors(profiles).then(() => console.log('[loadProfiles] Seed data uploaded to Supabase'));
-    const txns = JSON.parse(localStorage.getItem(TRANSACTIONS_KEY) || '[]');
-    if (txns.length) window.db.upsertTransactions(txns).then(() => console.log('[loadProfiles] Seed transactions uploaded'));
-  }
+  
+  // No data available
+  profiles = [];
+  console.log('[loadProfiles] No data available - database may be offline or empty');
 }
 
 function seedBenefits() {
@@ -1097,11 +1115,11 @@ async function handleLogin(){
       user = await window.db.login(username, password);
     }
 
-    // 2. Fallback to hardcoded DEMO_USERS (offline / development)
-    if (!user) {
-      const demo = DEMO_USERS.find(u => u.username === username && u.password === password);
-      if (demo) user = demo;
-    }
+    // 2. Demo users disabled - use Supabase authentication only
+    // if (!user) {
+    //   const demo = DEMO_USERS.find(u => u.username === username && u.password === password);
+    //   if (demo) user = demo;
+    // }
 
     if (!user) {
       // Check if this username is a pending/rejected registration
@@ -1128,7 +1146,9 @@ async function handleLogin(){
       // For senior: senior_id (Supabase) or id (DEMO_USERS fallback)
       const seniorId = user.senior_id || user.id || null;
       sessionStorage.setItem('currentUser', JSON.stringify({ role: 'senior', username, id: seniorId }));
-      window.location.href = 'senior.html';
+      // Redirect to Android/mobile-optimised page on touch devices
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+      window.location.href = isMobile ? 'senior-mobile.html' : 'senior.html';
     } else if (role === 'merchant') {
       sessionStorage.setItem('currentUser', JSON.stringify({ role: 'merchant', username, id: user.id || null }));
       window.location.href = 'merchant.html';
@@ -1140,7 +1160,8 @@ async function handleLogin(){
       window.location.href = 'admin.html';
     } else {
       sessionStorage.setItem('lingap_user', JSON.stringify({ role, username, seniorId: user.senior_id || user.id || null }));
-      window.location.href = 'senior.html';
+      const _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+      window.location.href = _isMobile ? 'senior-mobile.html' : 'senior.html';
     }
   } catch (e) {
     console.error('[login]', e);
@@ -1157,30 +1178,50 @@ let hq=null;
 // Pending registrations – populated from Supabase at runtime
 let pendingRegistrations = [];
 
-// Fallback demo data used when Supabase returns no rows (development / offline)
-const DEMO_PENDING_REGISTRATIONS = [
-  { id:'SC-2025-001', name:'Maria Santos Cruz',    birth:'1955-03-15', gender:'Female', contact:'0912-345-6789', address:'Brgy. San Jose, Floridablanca, Pampanga',    email:'maria.cruz@email.com',  benefits:'Pension, Medical',          documents:['Valid ID','Birth Certificate','Proof of Residency'], dateApplied:'2025-11-15', status:'pending' },
-  { id:'SC-2025-002', name:'Roberto Diaz Reyes',   birth:'1952-08-22', gender:'Male',   contact:'0923-456-7890', address:'Brgy. Santa Rita, Floridablanca, Pampanga',  email:'roberto.reyes@email.com',benefits:'Transport, Medical',         documents:['Valid ID','Birth Certificate'],                       dateApplied:'2025-11-16', status:'pending' },
-  { id:'SC-2025-003', name:'Elena Flores Mendoza', birth:'1958-12-05', gender:'Female', contact:'0945-678-9012', address:'Brgy. Dela Paz, Floridablanca, Pampanga',   email:'elena.mendoza@email.com',benefits:'Pension, Transport, Medical', documents:['Valid ID','Birth Certificate','Proof of Residency','Medical Records'], dateApplied:'2025-11-17', status:'pending' },
-  { id:'SC-2025-004', name:'Carlos Bautista Garcia',birth:'1950-06-18', gender:'Male',   contact:'0918-234-5678', address:'Brgy. Mabical, Floridablanca, Pampanga',     email:'carlos.garcia@email.com',benefits:'Pension, Medical',          documents:['Valid ID','Birth Certificate','Medical Records'],     dateApplied:'2025-11-18', status:'pending' },
-  { id:'SC-2025-005', name:'Teresita Reyes Santos', birth:'1959-09-30', gender:'Female', contact:'0927-890-1234', address:'Brgy. Cabetican, Floridablanca, Pampanga',  email:'teresita.santos@email.com',benefits:'Medical, Transport',        documents:['Valid ID','Birth Certificate','Proof of Residency'],  dateApplied:'2025-11-18', status:'pending' }
-];
+// Demo pending registrations removed - use Supabase only
+const DEMO_PENDING_REGISTRATIONS = [];
 
 function initAdmin(){
   const s = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-  if(!s || s.role!=='admin'){ location.href='index.html'; return; }
+  if(!s || s.role!=='admin'){ location.href='/'; return; }
+  
+  console.log('[initAdmin] Admin session verified, starting dashboard initialization...');
+  console.log('[initAdmin] Supabase client available:', !!window.supabaseClient);
+  console.log('[initAdmin] DB functions available:', !!window.db);
+  
   // Async load then render
   (async () => {
-    await loadProfiles();
-    filterSeniors();
-    populateReports();
-    await loadPendingRegistrations();
-    updateSeniorStats();
+    try {
+      console.log('[initAdmin] Loading seniors from database...');
+      await loadProfiles();
+      console.log('[initAdmin] Profiles loaded:', profiles.length, 'seniors');
+      
+      filterSeniors();
+      populateReports();
+      
+      console.log('[initAdmin] Loading pending registrations...');
+      await loadPendingRegistrations();
+      
+      updateSeniorStats();
+      
+      // Hide error message if data loaded successfully
+      const statusEl = document.getElementById('dbStatus');
+      if (statusEl && profiles.length > 0) {
+        statusEl.style.display = 'none';
+      }
+    } catch (err) {
+      console.error('[initAdmin] Failed to initialize:', err);
+      const statusEl = document.getElementById('dbStatus');
+      if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.innerHTML = `<strong>⚠️ Dashboard Error:</strong> ${err.message}. Check browser console for details.`;
+      }
+    }
   })();
   
   // Admin panel buttons
   const logoutBtnEl = document.getElementById('logoutBtn') || document.getElementById('logoutBtnProfile');
-  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ sessionStorage.removeItem('currentUser'); location.href='index.html'; });
+  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ sessionStorage.removeItem('currentUser'); location.href='/'; });
   
   const saveSeniorBtn = document.getElementById('saveSenior');
   if(saveSeniorBtn) {
@@ -1415,13 +1456,13 @@ async function loadPendingRegistrations() {
         dateApplied: r.date_applied || r.dateApplied,
         status:      r.status,
         documents:   []
-      })) : DEMO_PENDING_REGISTRATIONS;
+      })) : [];
     } catch (e) {
-      console.warn('[loadPendingRegistrations] Supabase error, using demo data', e);
-      pendingRegistrations = DEMO_PENDING_REGISTRATIONS;
+      console.warn('[loadPendingRegistrations] Supabase error, no demo data available', e);
+      pendingRegistrations = [];
     }
   } else {
-    pendingRegistrations = DEMO_PENDING_REGISTRATIONS;
+    pendingRegistrations = [];
   }
 
   renderFilteredRegistrations(pendingRegistrations);
@@ -1997,245 +2038,262 @@ function handleAdminScan(decodedText) {
 
 // reports
 function populateReports(){
-  const el = document.getElementById('reportsArea');
-  if(!el) return;
-  loadProfiles();
+  // Define date range for "last 30 days"
+  const now = new Date();
+  now.setHours(23,59,59,999);
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(now.getDate() - 29);
+  thirtyDaysAgo.setHours(0,0,0,0);
 
-  // total and simple stats
+  // ===== UPDATE DASHBOARD METRIC CARDS =====
+  const totalSeniorsEl = document.getElementById('reportTotalSeniors');
+  const activeSeniorsEl = document.getElementById('reportActiveSeniors');
+  const totalTransactionsEl = document.getElementById('reportTotalTransactions');
+  
   const total = profiles.length;
+  const totalTxns = profiles.reduce((sum, p) => sum + (p.transactions || []).length, 0);
+  const recentTxns = profiles.reduce((sum, p) => 
+    sum + ((p.transactions || [])
+      .filter(t => new Date(t.timestamp) >= thirtyDaysAgo).length), 0);
+
+  if(totalSeniorsEl) totalSeniorsEl.textContent = total;
+  if(activeSeniorsEl) activeSeniorsEl.textContent = recentTxns;
+  if(totalTransactionsEl) totalTransactionsEl.textContent = totalTxns;
+  
+  console.log('[populateReports] Updated main dashboard cards - Seniors:', total, 'Recent Txns:', recentTxns, 'Total Txns:', totalTxns);
+  
+  // ===== CALCULATE GENDER DISTRIBUTION =====
   const genders = profiles.reduce((acc,p)=>{
     const g = (p.gender || 'Unknown');
     acc[g] = (acc[g]||0) + 1;
     return acc;
   },{});
 
-  // benefits frequency (split comma lists)
-  const benefitsMap = {};
-  profiles.forEach(p=>{
-    (p.benefits || '').split(',').map(s=>s.trim()).filter(Boolean).forEach(b=>{
-      benefitsMap[b] = (benefitsMap[b]||0) + 1;
-    });
-  });
-
-  // Calculate additional stats
-  const totalTxns = profiles.reduce((sum, p) => sum + (p.transactions || []).length, 0);
-  const recentTxns = profiles.reduce((sum, p) => 
-    sum + ((p.transactions || [])
-      .filter(t => new Date(t.timestamp) >= thirtyDaysAgo).length), 0);
-  const avgAge = Math.round(profiles.reduce((sum, p) => {
-    const age = p.birth ? Math.floor((new Date() - new Date(p.birth)) / 31557600000) : 0;
-    return sum + age;
-  }, 0) / (profiles.length || 1));
-
-  // Find most common benefits
-  const allBenefits = profiles.reduce((acc, p) => {
-    (p.benefits || '').split(',').map(b => b.trim()).filter(Boolean)
-      .forEach(b => acc[b] = (acc[b] || 0) + 1);
-    return acc;
-  }, {});
-  const topBenefits = Object.entries(allBenefits)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([name, count]) => `${name} (${count})`);
-
-  // Render enhanced reports
-  el.innerHTML = `
-    <div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px">
-      <div class="stat-card" style="background:#f7faf9;padding:16px;border-radius:8px;border:1px solid #e6efe3">
-        <div style="color:var(--muted);font-size:13px;margin-bottom:4px">Total Seniors</div>
-        <div style="font-size:24px;font-weight:700;color:var(--primary)">${total}</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:4px">Average age: ${avgAge} years</div>
-      </div>
-      <div class="stat-card" style="background:#f7faf9;padding:16px;border-radius:8px;border:1px solid #e6efe3">
-        <div style="color:var(--muted);font-size:13px;margin-bottom:4px">Recent Activity</div>
-        <div style="font-size:24px;font-weight:700;color:var(--primary)">${recentTxns}</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:4px">Transactions in 30 days</div>
-      </div>
-      <div class="stat-card" style="background:#f7faf9;padding:16px;border-radius:8px;border:1px solid #e6efe3">
-        <div style="color:var(--muted);font-size:13px;margin-bottom:4px">All Time</div>
-        <div style="font-size:24px;font-weight:700;color:var(--primary)">${totalTxns}</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:4px">Total transactions</div>
-      </div>
-      <div class="stat-card" style="background:#f7faf9;padding:16px;border-radius:8px;border:1px solid #e6efe3">
-        <div style="color:var(--muted);font-size:13px;margin-bottom:4px">Popular Benefits</div>
-        <div style="font-size:15px;font-weight:600;color:var(--text)">${topBenefits.join(', ') || 'None recorded'}</div>
-      </div>
-    </div>
-
-    <div class="charts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:24px;margin-bottom:24px">
-      <div class="chart-card" style="background:white;padding:20px;border-radius:12px;border:1px solid #e6efe3">
-        <h3 style="margin:0 0 16px;font-size:16px">Gender Distribution</h3>
-        <canvas id="genderChart" height="240" aria-label="Gender distribution chart"></canvas>
-      </div>
-      <div class="chart-card" style="background:white;padding:20px;border-radius:12px;border:1px solid #e6efe3">
-        <h3 style="margin:0 0 16px;font-size:16px">Transaction Activity (Last 30 Days)</h3>
-        <canvas id="activityChart" height="240" aria-label="Transaction activity chart"></canvas>
-      </div>
-    </div>
-
-    <div class="summary-card" style="background:white;padding:20px;border-radius:12px;border:1px solid #e6efe3">
-      <h3 style="margin:0 0 16px;font-size:16px">Recent Transactions</h3>
-      <div class="recent-txns" style="max-height:200px;overflow-y:auto">
-        ${profiles.reduce((html, p) => {
-          const recent = (p.transactions || [])
-            .filter(t => new Date(t.timestamp) >= thirtyDaysAgo)
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-            .slice(0, 2)
-            .map(t => `
-              <div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #f0f0f0">
-                <div>
-                  <div style="font-weight:600">${p.name}</div>
-                  <div style="font-size:13px;color:var(--muted)">${t.note || 'No details'}</div>
-                </div>
-                <div style="font-size:13px;color:var(--muted);text-align:right">
-                  ${new Date(t.timestamp).toLocaleDateString()}
-                </div>
-              </div>
-            `).join('');
-          return html + recent;
-        }, '') || '<div style="text-align:center;padding:20px;color:var(--muted)">No recent transactions</div>'}
-      </div>
-    </div>
-  `;
-
-  // If Chart.js isn't loaded, show fallback
-  if(typeof Chart === 'undefined'){
-    el.insertAdjacentHTML('beforeend','<div class="small" style="color:crimson;margin-top:8px">Charts unavailable (Chart.js not loaded)</div>');
-    return;
-  }
-
-  // destroy previous charts if present (avoid duplicates)
-  try{ if(window._genderChart) { window._genderChart.destroy(); window._genderChart = null; } }catch(e){}
-  try{ if(window._activityChart) { window._activityChart.destroy(); window._activityChart = null; } }catch(e){}
-
-  // Gender pie chart
-  const genderLabels = Object.keys(genders);
-  const genderData = genderLabels.map(l => genders[l]);
-  const genderCtx = document.getElementById('genderChart').getContext('2d');
-  window._genderChart = new Chart(genderCtx, {
-    type: 'pie',
-    data: {
-      labels: genderLabels,
-      datasets: [{
-        data: genderData,
-        backgroundColor: genderLabels.map((_,i)=>['#0c8c47','#facc15','#6b7280','#60a5fa','#fb7185'][i % 5])
-      }]
-    },
-    options: {
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            padding: 20,
-            usePointStyle: true,
-            font: { size: 13 }
-          }
-        }
-      },
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: 10 }
-    }
-  });
-
-  // Transaction activity line chart (last 30 days)
-  const now = new Date();
-  now.setHours(23,59,59,999); // End of today
-  const thirtyDaysAgo = new Date(now);
-  thirtyDaysAgo.setDate(now.getDate() - 29); // Include today, so go back 29 days
-  thirtyDaysAgo.setHours(0,0,0,0); // Start of that day
+  const femaleCount = genders['Female'] || 0;
+  const maleCount = genders['Male'] || 0;
   
-  // Generate all dates in range first
-  const dateList = [];
-  const dateMap = {};
-  for(let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0];
-    dateList.push(dateStr);
-    dateMap[dateStr] = 0; // Initialize all dates with 0
-  }
-
-  // Count transactions per date
+  // ===== UPDATE SENIORS TAB STATS =====
+  const totalSeniorsCountEl = document.getElementById('totalSeniorsCount');
+  const femaleCountEl = document.getElementById('femaleCount');
+  const maleCountEl = document.getElementById('maleCount');
+  const activeCountEl = document.getElementById('activeCount');
+  
+  if(totalSeniorsCountEl) totalSeniorsCountEl.textContent = total;
+  if(femaleCountEl) femaleCountEl.textContent = femaleCount;
+  if(maleCountEl) maleCountEl.textContent = maleCount;
+  if(activeCountEl) activeCountEl.textContent = recentTxns;
+  
+  // ===== CALCULATE AGE GROUPS =====
+  const ageGroups = {
+    '60-65': 0,
+    '66-70': 0,
+    '71-75': 0,
+    '76-80': 0,
+    '81+': 0
+  };
+  
   profiles.forEach(p => {
-    (p.transactions || []).forEach(t => {
-      const txDate = new Date(t.timestamp);
-      if(txDate >= thirtyDaysAgo && txDate <= now) {
-        const dateStr = txDate.toISOString().split('T')[0];
-        if(dateMap[dateStr] !== undefined) { // Only count if in our range
-          dateMap[dateStr]++;
-        }
-      }
-    });
-  });
-
-  // Use consistent date list for labels and map to counts
-  const activityLabels = dateList;
-  const activityData = dateList.map(d => dateMap[d]);
-
-  const actCtx = document.getElementById('activityChart').getContext('2d');
-  window._activityChart = new Chart(actCtx, {
-    type: 'line',
-    data: {
-      labels: activityLabels.map(d => new Date(d).toLocaleDateString()),
-      datasets: [{
-        label: 'Transactions',
-        data: activityData,
-        borderColor: '#0c8c47',
-        backgroundColor: 'rgba(12,140,71,0.1)',
-        fill: true,
-        tension: 0.2,
-        pointRadius: 3,
-        pointHoverRadius: 5
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 750 // Smoother animation
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: (ctx) => new Date(activityLabels[ctx[0].dataIndex]).toLocaleDateString(),
-            label: (ctx) => `${ctx.parsed.y} transaction${ctx.parsed.y !== 1 ? 's' : ''}`
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { 
-            maxTicksLimit: 7,
-            callback: value => new Date(activityLabels[value]).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric'
-            })
-          }
-        },
-        y: {
-          beginAtZero: true,
-          ticks: { 
-            precision: 0,
-            stepSize: 1,
-            maxTicksLimit: 6
-          },
-          suggestedMax: Math.max(5, Math.max(...activityData) + 1) // Always show at least 0-5 range
-        }
-      }
+    if (p.birth) {
+      const age = Math.floor((new Date() - new Date(p.birth)) / 31557600000);
+      if (age >= 60 && age <= 65) ageGroups['60-65']++;
+      else if (age >= 66 && age <= 70) ageGroups['66-70']++;
+      else if (age >= 71 && age <= 75) ageGroups['71-75']++;
+      else if (age >= 76 && age <= 80) ageGroups['76-80']++;
+      else if (age > 80) ageGroups['81+']++;
     }
   });
+  
+  // ===== CALCULATE BENEFITS DISTRIBUTED =====
+  const benefitsMap = {};
+  let totalBenefitsValue = 0;
+  profiles.forEach(p=>{
+    let benefitsList = [];
+    if (Array.isArray(p.benefits)) {
+      benefitsList = p.benefits;
+    } else if (typeof p.benefits === 'string' && p.benefits) {
+      benefitsList = p.benefits.split(',').map(s=>s.trim()).filter(Boolean);
+    }
+    benefitsList.forEach(b=>{
+      benefitsMap[b] = (benefitsMap[b]||0) + 1;
+      // Estimate benefit values
+      if(b.includes('Medical')) totalBenefitsValue += 5000;
+      else if(b.includes('Pension')) totalBenefitsValue += 1500;
+      else if(b.includes('Transport')) totalBenefitsValue += 500;
+    });
+  });
+  
+  const totalBenefitsEl = document.getElementById('reportTotalBenefits');
+  if(totalBenefitsEl) totalBenefitsEl.textContent = totalBenefitsValue.toLocaleString();
+  
+  console.log('[populateReports] Gender breakdown:', genders, 'Age groups:', ageGroups);
+
+  // ===== RENDER GENDER PIE CHART =====
+  try {
+    const genderCtx = document.getElementById('genderChart');
+    if(genderCtx && typeof Chart !== 'undefined') {
+      // Destroy previous chart if exists
+      if(window._genderChart) { 
+        try { window._genderChart.destroy(); } catch(e) {}
+      }
+      
+      const genderLabels = Object.keys(genders);
+      const genderData = genderLabels.map(l => genders[l]);
+      
+      window._genderChart = new Chart(genderCtx, {
+        type: 'doughnut',
+        data: {
+          labels: genderLabels,
+          datasets: [{
+            data: genderData,
+            backgroundColor: ['#ec4899', '#06b6d4', '#f59e0b', '#6b7280'],
+            borderColor: ['#fff', '#fff', '#fff', '#fff'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { padding: 20, font: { size: 13 }, usePointStyle: true }
+            }
+          }
+        }
+      });
+      console.log('[populateReports] Rendered gender chart');
+    }
+  } catch(e) {
+    console.warn('[populateReports] Gender chart error:', e.message);
+  }
+
+  // ===== RENDER AGE DISTRIBUTION CHART =====
+  try {
+    const ageCtx = document.getElementById('ageChart');
+    if(ageCtx && typeof Chart !== 'undefined') {
+      // Destroy previous chart if exists
+      if(window._ageChart) { 
+        try { window._ageChart.destroy(); } catch(e) {}
+      }
+      
+      const ageLabels = Object.keys(ageGroups);
+      const ageData = ageLabels.map(l => ageGroups[l]);
+      
+      window._ageChart = new Chart(ageCtx, {
+        type: 'bar',
+        data: {
+          labels: ageLabels,
+          datasets: [{
+            label: 'Number of Seniors',
+            data: ageData,
+            backgroundColor: '#22c55e',
+            borderColor: '#16a34a',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: 'top' }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+      console.log('[populateReports] Rendered age chart');
+    }
+  } catch(e) {
+    console.warn('[populateReports] Age chart error:', e.message);
+  }
+
+  // ===== RENDER TRANSACTION ACTIVITY CHART =====
+  try {
+    const activityCtx = document.getElementById('activityChart');
+    if(activityCtx && typeof Chart !== 'undefined') {
+      // Destroy previous chart if exists
+      if(window._activityChart) { 
+        try { window._activityChart.destroy(); } catch(e) {}
+      }
+      
+      // Generate dates for last 30 days
+      const dateMap = {};
+      const dateList = [];
+      for(let d = new Date(thirtyDaysAgo); d <= now; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        dateList.push(dateStr);
+        dateMap[dateStr] = 0;
+      }
+
+      // Count transactions per date
+      profiles.forEach(p => {
+        (p.transactions || []).forEach(t => {
+          const txDate = new Date(t.timestamp);
+          if(txDate >= thirtyDaysAgo && txDate <= now) {
+            const dateStr = txDate.toISOString().split('T')[0];
+            if(dateMap[dateStr] !== undefined) {
+              dateMap[dateStr]++;
+            }
+          }
+        });
+      });
+
+      const activityLabels = dateList.map(d => new Date(d + 'T00:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}));
+      const activityData = dateList.map(d => dateMap[d]);
+
+      window._activityChart = new Chart(activityCtx, {
+        type: 'line',
+        data: {
+          labels: activityLabels,
+          datasets: [{
+            label: 'Transactions',
+            data: activityData,
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34,197,94,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointBackgroundColor: '#22c55e'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: 'top' }
+          },
+          scales: {
+            y: { 
+              beginAtZero: true,
+              ticks: { precision: 0, stepSize: 1 },
+              suggestedMax: Math.max(5, Math.max(...activityData) + 1)
+            }
+          }
+        }
+      });
+      console.log('[populateReports] Rendered activity chart');
+    }
+  } catch(e) {
+    console.warn('[populateReports] Activity chart error:', e.message);
+  }
+  
+  console.log('[populateReports] All dashboard data populated successfully');
 }
+
+// Update dashboard statistics cards
 
 // ===== SENIOR =====
 function initSenior(){
-  const s = getSession(); if(!s || s.role!=='senior'){ location.href='index.html'; return; }
+  const s = getSession(); if(!s || s.role!=='senior'){ location.href='/'; return; }
   loadProfiles();
   const myId = s.seniorId || 'LGAPU-001';
   const me = profiles.find(p=>p.id===myId);
-  if(!me){ alert('Profile not found'); location.href='index.html'; return; }
+  if(!me){ alert('Profile not found'); location.href='/'; return; }
   renderSenior(me);
-  document.getElementById('logoutSenior').addEventListener('click', ()=>{ sessionStorage.removeItem('lingap_user'); location.href='index.html'; });
+  document.getElementById('logoutSenior').addEventListener('click', ()=>{ sessionStorage.removeItem('lingap_user'); location.href='/'; });
   document.getElementById('saveNotes').addEventListener('click', ()=>{ me.notes = document.getElementById('seniorNotes').value.trim(); localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles)); alert('Notes saved'); renderSenior(me); });
   document.getElementById('genTxnQR').addEventListener('click', ()=>{ generateTxnQR(me); });
   document.getElementById('downloadSeniorQR').addEventListener('click', ()=>{ const c=document.querySelector('#seniorQR canvas'); if(!c){ alert('No QR'); return; } c.toBlob(b=>{ const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download=`${me.id}_txn_qr.png`; a.click(); URL.revokeObjectURL(url); }); });
@@ -2276,4 +2334,11 @@ async function generateTxnQR(me){
 }
 
 // ===== helpers =====
-function getSession(){ try{ return JSON.parse(sessionStorage.getItem('lingap_user')); }catch(e){return null;} }
+function getSession(){ 
+  try { 
+    return JSON.parse(sessionStorage.getItem('currentUser')); 
+  } catch(e) { 
+    console.warn('[getSession] Failed to parse session:', e);
+    return null; 
+  } 
+}

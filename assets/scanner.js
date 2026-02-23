@@ -178,7 +178,7 @@ function handleSuccessfulScan(decodedText) {
 
 // Initialize when document loads
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.location.pathname.includes('admin.html')) {
+    if (/\/admin(\/(index\.html)?)?$/i.test(window.location.pathname)) {
         initializeScanner();
         populateCameras();
         

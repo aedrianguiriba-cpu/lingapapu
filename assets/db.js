@@ -8,7 +8,13 @@
 
 /* ── helpers ────────────────────────────────────────────── */
 function _sb() {
-  if (!window.supabaseClient) throw new Error('Supabase client not initialised');
+  if (!window.supabaseClient) {
+    const msg = 'Supabase client not initialized - ensure supabase-config.js loaded after Supabase CDN script';
+    console.error('[db._sb] CRITICAL:', msg);
+    console.error('[db._sb] window.supabase available:', !!window.supabase);
+    console.error('[db._sb] window.supabaseClient available:', !!window.supabaseClient);
+    throw new Error(msg);
+  }
   return window.supabaseClient;
 }
 
@@ -137,13 +143,22 @@ window.db = {
         .from('seniors')
         .select('*')
         .order('name', { ascending: true });
-      if (error) { _err('getSeniors', error); return []; }
+      if (error) { 
+        console.error('[db.getSeniors] Supabase error:', error);
+        _err('getSeniors', error);
+        return []; 
+      }
+      console.log('[db.getSeniors] Success: returned', (data || []).length, 'seniors');
       // Ensure benefits is always an array
       return (data || []).map(s => ({
         ...s,
         benefits: Array.isArray(s.benefits) ? s.benefits : []
       }));
-    } catch (e) { _err('getSeniors', e); return []; }
+    } catch (e) { 
+      console.error('[db.getSeniors] Exception:', e);
+      _err('getSeniors', e); 
+      return []; 
+    }
   },
 
   /**
@@ -196,10 +211,16 @@ window.db = {
         benefits:          Array.isArray(senior.benefits) ? senior.benefits : [],
         notes:             senior.notes        || null,
         registration_date: senior.registrationDate || new Date().toISOString(),
-        status:            senior.status       || 'active',
-        photo:             senior.photo        || null
+        status:            (senior.status || 'active').toLowerCase(),
+        photo:             senior.photo        || null,
+        civil_status:      senior.civilStatus  || senior.civil_status || null,
+        barangay:          senior.barangay     || null
       };
-      const { data, error } = await _sb().from('seniors').insert(payload).select().single();
+      const { data, error } = await _sb()
+        .from('seniors')
+        .upsert(payload, { onConflict: 'id' })
+        .select()
+        .single();
       if (error) { _err('addSenior', error); return null; }
       return data;
     } catch (e) { _err('addSenior', e); return null; }
@@ -220,11 +241,16 @@ window.db = {
       if (updates.address           !== undefined) payload.address           = updates.address;
       if (updates.username          !== undefined) payload.username          = updates.username;
       if (updates.password          !== undefined) payload.password          = updates.password;
-      if (updates.benefits          !== undefined) payload.benefits          = updates.benefits;
+      if (updates.benefits          !== undefined) payload.benefits          = Array.isArray(updates.benefits) ? updates.benefits : (typeof updates.benefits === 'string' && updates.benefits ? updates.benefits.split(',').map(b => b.trim()).filter(Boolean) : []);
       if (updates.notes             !== undefined) payload.notes             = updates.notes;
       if (updates.status            !== undefined) payload.status            = updates.status;
       if (updates.photo             !== undefined) payload.photo             = updates.photo;
+      if (updates.qr_code           !== undefined) payload.qr_code           = updates.qr_code;
+      if (updates.civil_status      !== undefined) payload.civil_status      = updates.civil_status;
+      if (updates.civilStatus       !== undefined) payload.civil_status      = updates.civilStatus;
+      if (updates.barangay          !== undefined) payload.barangay          = updates.barangay;
       if (updates.registrationDate  !== undefined) payload.registration_date = updates.registrationDate;
+      // Note: 'email' lives in the users table, not seniors — do not include it here
 
       const { data, error } = await _sb()
         .from('seniors')
@@ -235,6 +261,23 @@ window.db = {
       if (error) { _err('updateSenior', error); return null; }
       return data;
     } catch (e) { _err('updateSenior', e); return null; }
+  },
+
+  /**
+   * Persist a generated QR code data-URL to the seniors table.
+   * Called once after the QR is first rendered; subsequent loads read it back.
+   */
+  async saveQRCode(seniorId, dataURL) {
+    try {
+      const { data, error } = await _sb()
+        .from('seniors')
+        .update({ qr_code: dataURL })
+        .eq('id', seniorId)
+        .select('id, qr_code')
+        .single();
+      if (error) { _err('saveQRCode', error); return null; }
+      return data;
+    } catch (e) { _err('saveQRCode', e); return null; }
   },
 
   /**
@@ -506,15 +549,19 @@ window.db = {
         notes:        reg.notes       || null,
         username:     reg.username    ? reg.username.trim().toLowerCase() : null,
         password:     reg.password    || null,
+        civil_status: reg.civilStatus || reg.civil_status || null,
+        barangay:     reg.barangay    || null,
         date_applied: reg.dateApplied || new Date().toISOString().split('T')[0],
         status:       'pending'
       };
+      console.log('[db.addRegistration] Payload being sent:', payload);
       const { data, error } = await _sb()
         .from('pending_registrations')
         .insert(payload)
         .select()
         .single();
       if (error) { _err('addRegistration', error); return null; }
+      console.log('[db.addRegistration] Successfully saved registration:', data);
       return data;
     } catch (e) { _err('addRegistration', e); return null; }
   },
@@ -530,7 +577,7 @@ window.db = {
       if (userPayload) {
         await _sb()
           .from('users')
-          .insert({
+          .upsert({
             id:        userPayload.id        || ('USR-' + Date.now()),
             name:      seniorPayload.name,
             username:  userPayload.username  ? userPayload.username.trim().toLowerCase() : null,
@@ -538,7 +585,7 @@ window.db = {
             role:      'senior',
             senior_id: senior.id,
             email:     userPayload.email     || null
-          })
+          }, { onConflict: 'username' })
           .select();
       }
 
@@ -579,6 +626,86 @@ window.db = {
       if (error) { _err('rejectRegistration', error); return false; }
       return true;
     } catch (e) { _err('rejectRegistration', e); return false; }
+  },
+
+  // ──────────────────────────────────────────────────────────
+  // USER BENEFITS  (per-senior benefit assignment records)
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Fetch all active user_benefits rows for a given senior.
+   * Returns an array of rows: { id, senior_id, benefit_name, assigned_by, assigned_at, status, ... }
+   */
+  async getUserBenefits(seniorId) {
+    try {
+      const { data, error } = await _sb()
+        .from('user_benefits')
+        .select('*')
+        .eq('senior_id', seniorId)
+        .eq('status', 'active')
+        .order('assigned_at', { ascending: true });
+      if (error) { _err('getUserBenefits', error); return []; }
+      return data || [];
+    } catch (e) { _err('getUserBenefits', e); return []; }
+  },
+
+  /**
+   * Upsert benefit assignments for a senior.
+   * benefitNames: string[]  — e.g. ['20% Senior Discount', 'Burial Assistance']
+   * assignedBy:   string    — OSCA username or user id
+   * On conflict (senior_id, benefit_name) the row is re-activated with the new assignedBy.
+   */
+  async addUserBenefits(seniorId, benefitNames, assignedBy = null) {
+    try {
+      if (!Array.isArray(benefitNames) || benefitNames.length === 0) return [];
+      const now = new Date().toISOString();
+      const rows = benefitNames.map((name, i) => ({
+        id:           `UBEN-${Date.now()}-${i}-${name.replace(/\W/g, '')}`,
+        senior_id:    seniorId,
+        benefit_name: name,
+        assigned_by:  assignedBy,
+        status:       'active',
+        assigned_at:  now
+      }));
+      const { data, error } = await _sb()
+        .from('user_benefits')
+        .upsert(rows, { onConflict: 'senior_id,benefit_name' })
+        .select();
+      if (error) { _err('addUserBenefits', error); return null; }
+      return data || [];
+    } catch (e) { _err('addUserBenefits', e); return null; }
+  },
+
+  /**
+   * Revoke a single benefit for a senior (sets status = 'revoked').
+   */
+  async revokeUserBenefit(seniorId, benefitName) {
+    try {
+      const { data, error } = await _sb()
+        .from('user_benefits')
+        .update({ status: 'revoked' })
+        .eq('senior_id', seniorId)
+        .eq('benefit_name', benefitName)
+        .select();
+      if (error) { _err('revokeUserBenefit', error); return null; }
+      return data;
+    } catch (e) { _err('revokeUserBenefit', e); return null; }
+  },
+
+  /**
+   * Revoke ALL active benefits for a senior (e.g. when rejecting eligibility).
+   */
+  async revokeAllUserBenefits(seniorId) {
+    try {
+      const { data, error } = await _sb()
+        .from('user_benefits')
+        .update({ status: 'revoked' })
+        .eq('senior_id', seniorId)
+        .eq('status', 'active')
+        .select();
+      if (error) { _err('revokeAllUserBenefits', error); return null; }
+      return data;
+    } catch (e) { _err('revokeAllUserBenefits', e); return null; }
   },
 
   // ──────────────────────────────────────────────────────────

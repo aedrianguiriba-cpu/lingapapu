@@ -75,6 +75,23 @@ async function initSeniorPortal() {
     currentUser.registrationDate = currentUser.registrationDate || currentUser.registration_date || null;
     currentUser.benefits = Array.isArray(currentUser.benefits) ? currentUser.benefits : [];
 
+    // Load from the dedicated user_benefits table (authoritative source after OSCA acceptance).
+    // This overrides the snapshot in seniors.benefits so the portal is always up-to-date.
+    if (window.db && currentUser.id) {
+        try {
+            const ubRows = await window.db.getUserBenefits(currentUser.id);
+            if (ubRows && ubRows.length > 0) {
+                currentUser.benefits = ubRows.map(r => r.benefit_name);
+                currentUser.userBenefitsDetail = ubRows; // keep full rows for display (assigned_by, assigned_at)
+                console.log('[senior-portal] Loaded', ubRows.length, 'benefit(s) from user_benefits table');
+            } else {
+                console.log('[senior-portal] No user_benefits rows found; using seniors.benefits snapshot');
+            }
+        } catch (e) {
+            console.warn('[senior-portal] Could not load user_benefits from Supabase', e);
+        }
+    }
+
     // Pre-load transactions from Supabase into localStorage cache for getTransactions()
     if (window.db) {
         try {
@@ -242,33 +259,61 @@ function loadDashboard() {
     }
 }
 
+// Default benefit programs shown when Supabase table is empty
+const DEFAULT_BENEFIT_PROGRAMS = [
+    { id: 'BEN001', name: 'Social Pension Program', description: 'Monthly financial assistance for indigent senior citizens', amount: 500, frequency: 'Monthly', active: true, eligibility: 'Indigent seniors 60+', coverage: 'Cash assistance' },
+    { id: 'BEN002', name: 'Medical/Dental Assistance', description: 'Healthcare support including medicines, laboratory, and dental services', amount: 1000, frequency: 'As needed', active: true, eligibility: 'All senior citizens', coverage: 'Medical and dental services' },
+    { id: 'BEN003', name: 'Burial Assistance', description: 'Financial assistance to bereaved families of deceased senior citizens', amount: 2000, frequency: 'One-time', active: true, eligibility: 'Deceased senior citizens', coverage: 'Funeral and burial expenses' },
+    { id: 'BEN004', name: 'Food Assistance (Grocery Package)', description: 'Monthly grocery package for indigent senior citizens', amount: 500, frequency: 'Monthly', active: true, eligibility: 'Indigent seniors', coverage: 'Basic food commodities' },
+    { id: 'BEN005', name: 'Housing Assistance', description: 'Support for home improvement and repair for indigent seniors', amount: 5000, frequency: 'One-time', active: true, eligibility: 'Indigent seniors with inadequate housing', coverage: 'Home repair materials and labor' },
+    { id: 'BEN006', name: '20% Senior Discount', description: 'Mandatory 20% discount on purchases and services nationwide', amount: 0, frequency: 'Always Available', active: true, eligibility: 'All senior citizens with valid ID', coverage: 'Restaurants, drugstores, groceries, hotels, transportation, recreation' },
+    { id: 'BEN007', name: 'Free Medical Checkup', description: 'Regular health monitoring and preventive care services', amount: 0, frequency: 'Monthly', active: true, eligibility: 'All registered seniors', coverage: 'Blood pressure, blood sugar, general consultation, vitamins' },
+    { id: 'BEN008', name: 'Birthday Gift', description: 'Birthday cash gift or incentive for senior citizens', amount: 1000, frequency: 'Yearly', active: true, eligibility: 'Birthday celebrants (birth month)', coverage: 'One-time birthday cash assistance' },
+];
+
 // Load Benefits
 function loadBenefits() {
-    const allBenefits = JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    let allPrograms = JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    // Fallback: if Supabase table is empty, show default programs so seniors always see something
+    if (allPrograms.length === 0) {
+        allPrograms = DEFAULT_BENEFIT_PROGRAMS;
+    }
+
     const userBenefitIds = currentUser.benefits || [];
-    const userBenefits = allBenefits.filter(b => userBenefitIds.includes(b.name));
+
+    // Build enrolled cards first — match by name (case-insensitive); synthesize a card if not
+    // found in the programs list (handles name mismatches between Supabase tables gracefully)
+    const enrolledItems = userBenefitIds.map(name => {
+        const match = allPrograms.find(p => (p.name || '').toLowerCase() === (name || '').toLowerCase());
+        return match || {
+            id: name, name,
+            description: 'Assigned benefit program',
+            amount: 0, frequency: 'As provided', active: true,
+            eligibility: 'Assigned by OSCA', coverage: ''
+        };
+    });
+
+    // Remaining active programs not already shown in enrolled list
+    const enrolledNamesLower = enrolledItems.map(b => (b.name || '').toLowerCase());
+    const otherPrograms = allPrograms.filter(b =>
+        b.active !== false && !enrolledNamesLower.includes((b.name || '').toLowerCase())
+    );
+
+    // Enrolled programs first, then other available programs
+    const displayBenefits = [...enrolledItems, ...otherPrograms];
+    const enrolledCount = enrolledItems.length;  // direct count — no name-matching needed
 
     const benefitsList = document.getElementById('benefitsList');
     const countBadge = document.getElementById('benefitsCountBadge');
-    if (countBadge) countBadge.textContent = `${userBenefits.length} Program${userBenefits.length !== 1 ? 's' : ''}`;
-
-    if (userBenefits.length === 0) {
-        benefitsList.innerHTML = `
-            <div style="grid-column:1/-1;text-align:center;padding:60px 20px;background:#fff;border:1px solid var(--border);border-radius:8px">
-                <div style="width:64px;height:64px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                </div>
-                <p style="color:#374151;font-size:16px;font-weight:700;margin:0">No benefits enrolled yet</p>
-                <p style="color:#6b7280;font-size:14px;margin:8px 0 0">Contact the OSCA office to enroll in available programs</p>
-            </div>
-        `;
-        return;
-    }
+    if (countBadge) countBadge.textContent = `${enrolledCount} Enrolled · ${displayBenefits.length} Available`;
 
     const benefitIcons = {
         'medical': '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
         'burial': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
         'pension': '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+        'discount': '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>',
+        'food': '<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>',
+        'housing': '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
         'birthday': '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
         'default': '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>'
     };
@@ -279,21 +324,38 @@ function loadBenefits() {
         { border: '#8b5cf6', bg: '#f5f3ff', text: '#6d28d9' },
         { border: '#f59e0b', bg: '#fffbeb', text: '#b45309' },
         { border: '#ec4899', bg: '#fdf2f8', text: '#be185d' },
+        { border: '#14b8a6', bg: '#f0fdfa', text: '#0f766e' },
     ];
 
-    const totalBenefitPages = Math.max(1, Math.ceil(userBenefits.length / SP_BENEFITS_PAGE_SIZE));
+    const totalBenefitPages = Math.max(1, Math.ceil(displayBenefits.length / SP_BENEFITS_PAGE_SIZE));
     seniorBenefitsPage = Math.min(Math.max(1, seniorBenefitsPage), totalBenefitPages);
     const bStart = (seniorBenefitsPage - 1) * SP_BENEFITS_PAGE_SIZE;
-    const bPageItems = userBenefits.slice(bStart, bStart + SP_BENEFITS_PAGE_SIZE);
+    const bPageItems = displayBenefits.slice(bStart, bStart + SP_BENEFITS_PAGE_SIZE);
 
     benefitsList.innerHTML = bPageItems.map((b, i) => {
         const color = benefitColors[(bStart + i) % benefitColors.length];
         const nameLower = (b.name || '').toLowerCase();
+        const isEnrolled = enrolledNamesLower.includes((b.name || '').toLowerCase());
+        const isAlwaysAvailable = (b.frequency || '').toLowerCase().includes('always') ||
+                                  (b.eligibility || '').toLowerCase().includes('all senior');
         let iconPath = benefitIcons['default'];
-        if (nameLower.includes('medical')) iconPath = benefitIcons['medical'];
+        if (nameLower.includes('medical') || nameLower.includes('dental')) iconPath = benefitIcons['medical'];
         else if (nameLower.includes('burial')) iconPath = benefitIcons['burial'];
         else if (nameLower.includes('pension')) iconPath = benefitIcons['pension'];
+        else if (nameLower.includes('discount')) iconPath = benefitIcons['discount'];
+        else if (nameLower.includes('food') || nameLower.includes('grocery')) iconPath = benefitIcons['food'];
+        else if (nameLower.includes('housing') || nameLower.includes('home')) iconPath = benefitIcons['housing'];
         else if (nameLower.includes('birthday') || nameLower.includes('incentive') || nameLower.includes('centenarian')) iconPath = benefitIcons['birthday'];
+
+        // Badge: Enrolled (green), Always Available (blue), Available (gray)
+        let badgeBg, badgeColor, badgeText;
+        if (isEnrolled) {
+            badgeBg = '#d1fae5'; badgeColor = '#059669'; badgeText = 'Enrolled';
+        } else if (isAlwaysAvailable) {
+            badgeBg = '#dbeafe'; badgeColor = '#1d4ed8'; badgeText = 'Available to All';
+        } else {
+            badgeBg = '#f3f4f6'; badgeColor = '#6b7280'; badgeText = 'Available';
+        }
 
         return `
         <div style="background:#ffffff;border:1px solid var(--border);border-top:3px solid ${color.border};border-radius:8px;padding:20px;transition:box-shadow 0.2s" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
@@ -303,14 +365,15 @@ function loadBenefits() {
                 </div>
                 <div style="flex:1;min-width:0">
                     <h3 style="margin:0;font-size:15px;font-weight:700;color:#1f2937;line-height:1.3">${b.name}</h3>
-                    <span style="display:inline-block;margin-top:4px;padding:2px 10px;background:${b.status === 'Active' ? '#d1fae5' : '#fee2e2'};color:${b.status === 'Active' ? '#059669' : '#dc2626'};border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">${b.status || 'Active'}</span>
+                    <span style="display:inline-block;margin-top:4px;padding:2px 10px;background:${badgeBg};color:${badgeColor};border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">${badgeText}</span>
                 </div>
             </div>
-            <p style="margin:0 0 16px;color:#6b7280;font-size:13px;line-height:1.5">${b.description || 'No description available'}</p>
+            <p style="margin:0 0 12px;color:#6b7280;font-size:13px;line-height:1.5">${b.description || 'No description available'}</p>
+            ${b.coverage ? `<p style="margin:0 0 14px;color:#9ca3af;font-size:12px;line-height:1.4"><strong style="color:#6b7280">Covers:</strong> ${b.coverage}</p>` : ''}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:14px;border-top:1px solid #f3f4f6">
                 <div style="background:${color.bg};border-radius:6px;padding:10px 12px">
                     <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Amount</div>
-                    <div style="font-size:20px;font-weight:800;color:${color.border}">₱${b.amount ? Number(b.amount).toLocaleString() : '0'}</div>
+                    <div style="font-size:20px;font-weight:800;color:${color.border}">${b.amount > 0 ? '₱' + Number(b.amount).toLocaleString() : 'Varies'}</div>
                 </div>
                 <div style="background:#f9fafb;border-radius:6px;padding:10px 12px">
                     <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Frequency</div>
@@ -325,10 +388,18 @@ function loadBenefits() {
 }
 
 function goToSeniorBenefitsPage(p) {
-    const allBenefits = JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    let allPrograms = JSON.parse(localStorage.getItem(BENEFITS_KEY) || '[]');
+    if (allPrograms.length === 0) allPrograms = DEFAULT_BENEFIT_PROGRAMS;
     const userBenefitIds = currentUser.benefits || [];
-    const userBenefits = allBenefits.filter(b => userBenefitIds.includes(b.name));
-    const totalPages = Math.max(1, Math.ceil(userBenefits.length / SP_BENEFITS_PAGE_SIZE));
+    const enrolledNamesLower = userBenefitIds.map(n => (n || '').toLowerCase());
+    const otherPrograms = allPrograms.filter(b =>
+        b.active !== false && !enrolledNamesLower.includes((b.name || '').toLowerCase())
+    );
+    const displayBenefits = [...userBenefitIds.map(name => {
+        const match = allPrograms.find(pr => (pr.name || '').toLowerCase() === (name || '').toLowerCase());
+        return match || { id: name, name, description: 'Assigned benefit program', amount: 0, frequency: 'As provided', active: true, eligibility: 'Assigned by OSCA', coverage: '' };
+    }), ...otherPrograms];
+    const totalPages = Math.max(1, Math.ceil(displayBenefits.length / SP_BENEFITS_PAGE_SIZE));
     if (p < 1 || p > totalPages) return;
     seniorBenefitsPage = p;
     loadBenefits();
@@ -414,6 +485,10 @@ function loadProfile() {
     document.getElementById('updateContact').value = currentUser.contact || '';
     document.getElementById('updateAddress').value = currentUser.address || '';
     document.getElementById('updateNotes').value = currentUser.notes || '';
+    const _ub = document.getElementById('updateBarangay');
+    if (_ub) _ub.value = currentUser.barangay || '';
+    const _ucs = document.getElementById('updateCivilStatus');
+    if (_ucs) _ucs.value = currentUser.civilStatus || currentUser.civil_status || '';
 }
 
 // Load QR code for ID card (universal QR)
@@ -433,7 +508,17 @@ function loadIDCardQR() {
     // Show loading indicator
     idCardQRContainer.innerHTML = '<div style="font-size:12px;color:#fff;text-align:center;padding:20px">Loading...</div>';
     
-    // Always regenerate QR code for now (for debugging)
+    // If a stored QR already exists in DB, show it immediately without regenerating
+    if (currentUser.qr_code) {
+        const img = document.createElement('img');
+        img.src = currentUser.qr_code;
+        img.style.cssText = 'width:80px;height:80px;border-radius:4px;display:block';
+        idCardQRContainer.innerHTML = '';
+        idCardQRContainer.appendChild(img);
+        console.log('ID card QR loaded from database');
+        return;
+    }
+
     if (typeof QRCode !== 'undefined') {
         // Generate QR with same format as admin (id, name, birth, contact)
         console.log('Generating QR for ID card (admin format)...');
@@ -444,29 +529,26 @@ function loadIDCardQR() {
             contact: currentUser.contact
         });
         
-        console.log('QR Data:', qrData);
-        
         const canvas = document.createElement('canvas');
-        console.log('Canvas created, calling QRCode.toCanvas...');
-        
         QRCode.toCanvas(canvas, qrData, {
             width: 80,
             margin: 1,
-            color: {
-                dark: '#22c55e',
-                light: '#ffffff'
-            }
+            color: { dark: '#22c55e', light: '#ffffff' }
         }, (error) => {
             if (error) {
                 console.error('Error generating QR:', error);
                 idCardQRContainer.innerHTML = '<div style="font-size:12px;color:#ef4444;text-align:center;padding:20px">QR Error: ' + error.message + '</div>';
             } else {
-                console.log('QR generated successfully for ID card');
                 idCardQRContainer.innerHTML = '';
                 idCardQRContainer.appendChild(canvas);
                 const qrDataURL = canvas.toDataURL();
                 localStorage.setItem(`universal_qr_${currentUser.id}`, qrDataURL);
-                console.log('QR appended to container and saved');
+                // Persist to Supabase so subsequent loads skip regeneration
+                if (window.db) {
+                    window.db.saveQRCode(currentUser.id, qrDataURL)
+                        .then(() => { currentUser.qr_code = qrDataURL; console.log('[QR] ID card QR saved to database'); })
+                        .catch(e => console.warn('[QR] Could not save ID card QR to database:', e));
+                }
             }
         });
     } else {
@@ -531,15 +613,19 @@ async function updateProfile() {
     const contact = document.getElementById('updateContact').value.trim();
     const address = document.getElementById('updateAddress').value.trim();
     const notes   = document.getElementById('updateNotes').value.trim();
+    const barangay    = (document.getElementById('updateBarangay')    || {}).value?.trim() || currentUser.barangay || '';
+    const civilStatus = (document.getElementById('updateCivilStatus') || {}).value         || currentUser.civilStatus || currentUser.civil_status || '';
 
     if (!contact || !address) {
         showToast('Please fill in all required fields', 'error');
         return;
     }
 
-    currentUser.contact = contact;
-    currentUser.address = address;
-    currentUser.notes   = notes;
+    currentUser.contact     = contact;
+    currentUser.address     = address;
+    currentUser.notes       = notes;
+    currentUser.barangay    = barangay;
+    currentUser.civilStatus = civilStatus;
 
     // Persist to localStorage cache
     const profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
@@ -552,7 +638,7 @@ async function updateProfile() {
     // Persist to Supabase
     if (window.db) {
         try {
-            await window.db.updateSenior(currentUser.id, { contact, address, notes });
+            await window.db.updateSenior(currentUser.id, { contact, address, notes, barangay, civilStatus });
         } catch (e) {
             console.error('[updateProfile]', e);
         }
@@ -615,8 +701,47 @@ function generateUniversalQR() {
     // Show loading
     universalQRContainer.innerHTML = '<div style="padding:40px;color:#667eea">Generating QR...</div>';
     
-    // Always regenerate for debugging
-    console.log('Generating QR code (admin format)');
+    // --- Use stored QR from database if available ---
+    if (currentUser.qr_code) {
+        console.log('[QR] Loading stored QR code from database');
+        universalQRContainer.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = currentUser.qr_code;
+        img.style.cssText = 'width:200px;height:200px;border-radius:8px;display:block';
+        universalQRContainer.appendChild(img);
+
+        // Wire Download button using the stored data URL
+        const dlBtn = document.getElementById('downloadUniversalQR');
+        if (dlBtn) {
+            dlBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.download = `LingapApu-QR-${currentUser.id}.png`;
+                link.href = currentUser.qr_code;
+                link.click();
+                showToast('QR Code downloaded!', 'success');
+            };
+        }
+        // Wire Share button using the stored data URL
+        const shareBtn = document.getElementById('shareUniversalQR');
+        if (shareBtn) {
+            shareBtn.onclick = async () => {
+                try {
+                    const res = await fetch(currentUser.qr_code);
+                    const blob = await res.blob();
+                    const file = new File([blob], `LingapApu-QR-${currentUser.id}.png`, { type: 'image/png' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({ files: [file], title: 'My LingapApu QR Code' });
+                        showToast('QR shared successfully!', 'success');
+                    } else {
+                        dlBtn && dlBtn.click();
+                    }
+                } catch(e) { if (e.name !== 'AbortError') showToast('Could not share — try downloading instead.', 'info'); }
+            };
+        }
+        return;
+    }
+
+    // --- Generate fresh QR and save to database ---
     const qrData = JSON.stringify({
         id: currentUser.id,
         name: currentUser.name,
@@ -624,41 +749,35 @@ function generateUniversalQR() {
         contact: currentUser.contact
     });
     
-    console.log('QR Data:', qrData);
-    
     const canvas = document.createElement('canvas');
-    console.log('Canvas created, calling QRCode.toCanvas...');
-    
     QRCode.toCanvas(canvas, qrData, {
         width: 200,
         margin: 2,
-        color: {
-            dark: '#22c55e',
-            light: '#ffffff'
-        }
+        color: { dark: '#22c55e', light: '#ffffff' }
     }, (error) => {
         if (error) {
             console.error('Error generating QR:', error);
             universalQRContainer.innerHTML = '<p style="color:red;padding:40px">Error: ' + error.message + '</p>';
         } else {
-            console.log('QR generated successfully');
             universalQRContainer.innerHTML = '';
             universalQRContainer.appendChild(canvas);
             const qrDataURL = canvas.toDataURL();
             localStorage.setItem(`universal_qr_${currentUser.id}`, qrDataURL);
-            console.log('QR saved to storage');
+
+            // Persist to Supabase so next load reads from DB
+            if (window.db) {
+                window.db.saveQRCode(currentUser.id, qrDataURL)
+                    .then(() => { currentUser.qr_code = qrDataURL; console.log('[QR] Universal QR saved to database'); })
+                    .catch(e => console.warn('[QR] Could not save QR to database:', e));
+            }
 
             // Wire Download button
             const dlBtn = document.getElementById('downloadUniversalQR');
-            if (dlBtn) {
-                dlBtn.onclick = () => downloadQRImage(canvas, 'LingapApu-QR');
-            }
+            if (dlBtn) dlBtn.onclick = () => downloadQRImage(canvas, 'LingapApu-QR');
 
             // Wire Share button
             const shareBtn = document.getElementById('shareUniversalQR');
-            if (shareBtn) {
-                shareBtn.onclick = () => shareQRImage(canvas, 'LingapApu-QR');
-            }
+            if (shareBtn) shareBtn.onclick = () => shareQRImage(canvas, 'LingapApu-QR');
         }
     });
 }

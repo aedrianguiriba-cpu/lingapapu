@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS public.seniors (
   registration_date TIMESTAMPTZ DEFAULT NOW(),
   status            TEXT DEFAULT 'active',
   photo             TEXT,
+  qr_code           TEXT,   -- base64 data URL of the senior's QR code (generated on first scan/view)
+  civil_status      TEXT,   -- Single, Married, Widowed, Separated, etc.
+  barangay          TEXT,   -- Barangay within the city/municipality
   created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -78,7 +81,21 @@ CREATE TABLE IF NOT EXISTS public.age_benefits (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ── 6. Pending Registrations ──
+-- ── 6. User Benefits (per-senior benefit assignments, written when OSCA accepts eligibility) ──
+CREATE TABLE IF NOT EXISTS public.user_benefits (
+  id           TEXT PRIMARY KEY DEFAULT ('UBEN-' || gen_random_uuid()::text),
+  senior_id    TEXT NOT NULL REFERENCES public.seniors(id) ON DELETE CASCADE,
+  benefit_name TEXT NOT NULL,
+  benefit_id   TEXT,              -- optional FK to benefits.id
+  assigned_by  TEXT,              -- OSCA username or user id
+  assigned_at  TIMESTAMPTZ DEFAULT NOW(),
+  status       TEXT DEFAULT 'active' CHECK (status IN ('active','revoked')),
+  notes        TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (senior_id, benefit_name)
+);
+
+-- ── 7. Pending Registrations ──
 CREATE TABLE IF NOT EXISTS public.pending_registrations (
   id           TEXT PRIMARY KEY DEFAULT ('SC-' || gen_random_uuid()::text),
   name         TEXT NOT NULL,
@@ -92,6 +109,8 @@ CREATE TABLE IF NOT EXISTS public.pending_registrations (
   username     TEXT,
   password     TEXT,
   birth        TEXT,
+  civil_status TEXT,
+  barangay     TEXT,
   date_applied TEXT DEFAULT (CURRENT_DATE::TEXT),
   status       TEXT DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
   created_at   TIMESTAMPTZ DEFAULT NOW()
@@ -108,6 +127,7 @@ ALTER TABLE public.seniors              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.benefits             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.age_benefits         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_benefits        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pending_registrations ENABLE ROW LEVEL SECURITY;
 
 -- Allow full CRUD via the anon key
@@ -116,12 +136,41 @@ CREATE POLICY "anon_all" ON public.seniors              FOR ALL TO anon USING (t
 CREATE POLICY "anon_all" ON public.transactions         FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon_all" ON public.benefits             FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon_all" ON public.age_benefits         FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all" ON public.user_benefits        FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon_all" ON public.pending_registrations FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- Add username/password columns to pending_registrations if running on an existing DB
 ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS username TEXT;
 ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS password TEXT;
 ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS birth    TEXT;
+
+-- Add qr_code, civil_status, barangay columns to seniors if running on an existing DB
+ALTER TABLE public.seniors ADD COLUMN IF NOT EXISTS qr_code      TEXT;
+ALTER TABLE public.seniors ADD COLUMN IF NOT EXISTS civil_status TEXT;
+ALTER TABLE public.seniors ADD COLUMN IF NOT EXISTS barangay     TEXT;
+-- Add civil_status, barangay to pending_registrations if running on an existing DB
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS civil_status TEXT;
+ALTER TABLE public.pending_registrations ADD COLUMN IF NOT EXISTS barangay     TEXT;
+
+-- Add user_benefits table if running on an existing DB
+CREATE TABLE IF NOT EXISTS public.user_benefits (
+  id           TEXT PRIMARY KEY DEFAULT ('UBEN-' || gen_random_uuid()::text),
+  senior_id    TEXT NOT NULL REFERENCES public.seniors(id) ON DELETE CASCADE,
+  benefit_name TEXT NOT NULL,
+  benefit_id   TEXT,
+  assigned_by  TEXT,
+  assigned_at  TIMESTAMPTZ DEFAULT NOW(),
+  status       TEXT DEFAULT 'active' CHECK (status IN ('active','revoked')),
+  notes        TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (senior_id, benefit_name)
+);
+ALTER TABLE public.user_benefits ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='user_benefits' AND policyname='anon_all') THEN
+    CREATE POLICY "anon_all" ON public.user_benefits FOR ALL TO anon USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 -- ============================================================
 -- Seed Data  (run once after creating tables)

@@ -5,67 +5,41 @@ let staffMembers = [];
 let staffPage = 1;
 const STAFF_PAGE_SIZE = 5;
 
-// Initialize staff with mock data
+// Initialize staff from database
 async function initStaff() {
   // Try Supabase first
   if (window.db) {
     try {
+      console.log('[staff] Loading from Supabase...');
       const data = await window.db.getStaff();
       if (data && data.length > 0) {
         staffMembers = data;
         localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(staffMembers));
+        console.log('[staff] Loaded', data.length, 'staff members from Supabase');
         renderStaffList();
         return;
       }
     } catch (e) {
-      console.warn('[staff] Supabase load failed, using localStorage/defaults', e);
+      console.warn('[staff] Supabase load failed:', e);
     }
   }
 
-  // Fallback: localStorage
+  // Fallback: try localStorage
   const stored = localStorage.getItem(STAFF_STORAGE_KEY);
-  if(stored) {
-    staffMembers = JSON.parse(stored);
-  } else {
-    // Default staff members
-    staffMembers = [
-      {
-        id: 'STAFF-001',
-        name: 'Maria Santos',
-        username: 'maria',
-        password: 'staff123',
-        role: 'staff',
-        contact: '0912-345-6789',
-        email: 'maria@floridablanca.gov.ph',
-        dateAdded: '2025-01-15'
-      },
-      {
-        id: 'STAFF-002',
-        name: 'Store 1',
-        username: 'store1',
-        password: 'merchant123',
-        role: 'merchant',
-        contact: '0923-456-7890',
-        email: 'store1@example.com',
-        dateAdded: '2025-02-10'
-      },
-      {
-        id: 'STAFF-003',
-        name: 'Pharmacy',
-        username: 'pharmacy',
-        password: 'merchant123',
-        role: 'merchant',
-        contact: '0934-567-8901',
-        email: 'pharmacy@example.com',
-        dateAdded: '2025-03-05'
-      }
-    ];
-    saveStaffData();
-    // Upload defaults to Supabase
-    if (window.db) {
-      staffMembers.forEach(s => window.db.addStaff(s).catch(()=>{}));
+  if (stored) {
+    try {
+      staffMembers = JSON.parse(stored);
+      console.log('[staff] Loaded', staffMembers.length, 'staff members from localStorage');
+    } catch (e) {
+      console.error('[staff] Failed to parse localStorage:', e);
+      staffMembers = [];
     }
+  } else {
+    // No data available
+    staffMembers = [];
+    console.log('[staff] No staff data available - database is empty');
   }
+  
   renderStaffList();
 }
 
@@ -208,7 +182,7 @@ function renderStaffList() {
   const oscaEl  = document.getElementById('statOscaStaff');
   const merEl   = document.getElementById('statMerchants');
   if(totalEl) totalEl.textContent = staffMembers.length;
-  if(oscaEl)  oscaEl.textContent  = staffMembers.filter(s => s.role === 'staff').length;
+  if(oscaEl)  oscaEl.textContent  = staffMembers.filter(s => s.role === 'osca').length;
   if(merEl)   merEl.textContent   = staffMembers.filter(s => s.role === 'merchant').length;
 
   if(staffMembers.length === 0) {
@@ -227,7 +201,7 @@ function renderStaffList() {
     '#22c55e','#3b82f6','#8b5cf6','#f59e0b','#ec4899','#06b6d4'
   ];
   const roleMeta = {
-    staff:    { label: 'OSCA Staff',  bg: '#dcfce7', color: '#15803d', border: '#22c55e' },
+    osca:     { label: 'OSCA Staff',  bg: '#dcfce7', color: '#15803d', border: '#22c55e' },
     merchant: { label: 'Merchant',    bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
     admin:    { label: 'Admin',       bg: '#eff6ff', color: '#1d4ed8', border: '#3b82f6' },
   };

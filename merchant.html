@@ -556,7 +556,7 @@
 // Check authentication
 const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
 if (!session.role || session.role !== 'merchant') {
-    window.location.href = 'index.html';
+    window.location.href = '/';
 }
 
 // Merchant Portal Logic
@@ -663,7 +663,7 @@ function setupEventListeners() {
     document.getElementById('logoutMerchantBtn').addEventListener('click', () => {
         if (confirm('Are you sure you want to logout?')) {
             sessionStorage.removeItem('currentUser');
-            window.location.href = 'index.html';
+            window.location.href = '/';
         }
     });
     
@@ -685,7 +685,7 @@ function handleImageUpload(event) {
         img.onload = () => {
             // Create canvas to process image
             const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
             canvas.width = img.width;
             canvas.height = img.height;
             context.drawImage(img, 0, 0);
@@ -751,7 +751,7 @@ function startScanner() {
     const video = document.getElementById('qr-video');
     const canvas = document.getElementById('qr-canvas');
     const statusDiv = document.getElementById('scan-status');
-    const canvasContext = canvas.getContext('2d');
+    const canvasContext = canvas.getContext('2d', { willReadFrequently: true });
     
     statusDiv.textContent = '📷 Starting camera...';
     statusDiv.style.color = '#22c55e';
@@ -1045,28 +1045,51 @@ function recordTransaction() {
         return;
     }
     
+    const discountAmount = original - final;
     const transaction = {
         id: 'TXN-' + Date.now(),
-        seniorId: currentSenior.id,  // Use 'id' property
-        seniorName: currentSenior.name,  // Use 'name' property
+        // snake_case (Supabase)
+        senior_id: currentSenior.id,
+        senior_name: currentSenior.name,
+        merchant_id: merchantData.id,
+        // camelCase aliases (display / localStorage)
+        seniorId: currentSenior.id,
+        seniorName: currentSenior.name,
         merchantId: merchantData.id,
-        merchantName: merchantData.name,
         type: type,
         originalAmount: original,
         discountPercent: discount,
-        discountAmount: original - final,
+        discountAmount: discountAmount,
         finalAmount: final,
-        notes: notes,
+        amount: final.toString(),
+        note: notes || type,
+        notes: notes || '',
         timestamp: new Date().toISOString(),
-        scanDate: new Date().toDateString()
+        scan_date: new Date().toLocaleDateString('en-US'),
+        status: 'Completed'
     };
     
-    // Add to global transactions
-    const allTransactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+    // Add to global transactions (localStorage)
+    const allTransactions = JSON.parse(localStorage.getItem('lingap_transactions') || '[]');
     allTransactions.push(transaction);
-    localStorage.setItem('transactions', JSON.stringify(allTransactions));
+    localStorage.setItem('lingap_transactions', JSON.stringify(allTransactions));
     
-    showAlert(`Transaction recorded! Discount: ₱${transaction.discountAmount.toFixed(2)} | Final: ₱${final.toFixed(2)}`, 'success');
+    // **IMPORTANT: Save to Supabase**
+    if (window.db) {
+        window.db.addTransaction(transaction).then((result) => {
+            if (result) {
+                console.log('[recordTransaction] Saved to Supabase:', result.id);
+            } else {
+                console.warn('[recordTransaction] Supabase save returned null');
+            }
+        }).catch(e => {
+            console.error('[recordTransaction] Failed to save to Supabase:', e);
+        });
+    } else {
+        console.warn('[recordTransaction] Supabase client not available');
+    }
+    
+    showAlert(`Transaction recorded! Discount: ₱${(original - final).toFixed(2)} | Final: ₱${final.toFixed(2)}`, 'success');
     
     // Auto-switch to history tab after 2 seconds
     setTimeout(() => {
@@ -1100,8 +1123,10 @@ function cancelTransaction() {
 }
 
 function updateStats() {
-    const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-    const merchantTransactions = transactions.filter(t => t.merchantId === merchantData.id);
+    const transactions = JSON.parse(localStorage.getItem('lingap_transactions') || '[]');
+    const merchantTransactions = transactions.filter(t =>
+        (t.merchantId || t.merchant_id) === merchantData.id
+    );
     const today = new Date().toDateString();
     const todayTransactions = merchantTransactions.filter(t => new Date(t.timestamp).toDateString() === today);
     
@@ -1112,14 +1137,48 @@ function updateStats() {
     document.getElementById('totalDiscount').textContent = '₱' + totalDiscount.toFixed(2);
 }
 
-function loadMerchantTransactions() {
-    const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
-    const merchantTransactions = transactions.filter(t => t.merchantId === merchantData.id);
+async function loadMerchantTransactions() {
+    // Pre-load from Supabase into localStorage cache
+    if (window.db && merchantData) {
+        try {
+            const allSupabaseTxns = await window.db.getTransactions();
+            const supabaseTxns = (allSupabaseTxns || []).filter(t =>
+                (t.merchant_id || t.merchantId) === merchantData.id
+            );
+            if (supabaseTxns.length > 0) {
+                const existing = JSON.parse(localStorage.getItem('lingap_transactions') || '[]');
+                const existingIds = new Set(existing.map(t => t.id));
+                const toMerge = supabaseTxns
+                    .filter(t => !existingIds.has(t.id))
+                    .map(t => ({
+                        ...t,
+                        seniorId:       t.senior_id   || t.seniorId,
+                        seniorName:     t.senior_name || t.seniorName,
+                        merchantId:     t.merchant_id || t.merchantId,
+                        originalAmount: t.original_amount != null ? parseFloat(t.original_amount) : (t.originalAmount || 0),
+                        discountPercent:t.discount_percent != null ? parseFloat(t.discount_percent) : (t.discountPercent || 0),
+                        discountAmount: t.discount_amount != null ? parseFloat(t.discount_amount) : (t.discountAmount || 0),
+                        finalAmount:    t.final_amount != null ? parseFloat(t.final_amount) : (parseFloat(t.amount) || 0),
+                        notes:          t.notes || t.note || '',
+                    }));
+                if (toMerge.length > 0) {
+                    localStorage.setItem('lingap_transactions', JSON.stringify([...existing, ...toMerge]));
+                }
+            }
+        } catch (e) {
+            console.warn('[loadMerchantTransactions] Supabase fetch failed, using cache', e);
+        }
+    }
+
+    const transactions = JSON.parse(localStorage.getItem('lingap_transactions') || '[]');
+    const merchantTransactions = transactions.filter(t =>
+        (t.merchantId || t.merchant_id) === merchantData.id
+    );
     
     // Apply filters
     const dateFrom = document.getElementById('filterDateFrom').value;
-    const dateTo = document.getElementById('filterDateTo').value;
-    const type = document.getElementById('filterType').value;
+    const dateTo   = document.getElementById('filterDateTo').value;
+    const type     = document.getElementById('filterType').value;
     
     let filtered = merchantTransactions;
     
@@ -1132,7 +1191,18 @@ function loadMerchantTransactions() {
     if (type) {
         filtered = filtered.filter(t => t.type === type);
     }
-    
+
+    // Update stats while we have the data
+    const today = new Date().toDateString();
+    const todayCount = merchantTransactions.filter(t => new Date(t.timestamp).toDateString() === today).length;
+    const totalDisc  = merchantTransactions.reduce((s, t) => s + (t.discountAmount || 0), 0);
+    const todayEl  = document.getElementById('todayScans');
+    const totalEl  = document.getElementById('totalTransactions');
+    const discEl   = document.getElementById('totalDiscount');
+    if (todayEl) todayEl.textContent = todayCount;
+    if (totalEl) totalEl.textContent = merchantTransactions.length;
+    if (discEl)  discEl.textContent  = '₱' + totalDisc.toFixed(2);
+
     const tbody = document.getElementById('merchantTransactionsBody');
     
     if (filtered.length === 0) {
@@ -1140,18 +1210,28 @@ function loadMerchantTransactions() {
         return;
     }
     
-    tbody.innerHTML = filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(t => `
+    tbody.innerHTML = filtered
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .map(t => {
+            const seniorId   = t.seniorId   || t.senior_id   || '—';
+            const seniorName = t.seniorName || t.senior_name || '—';
+            const origAmt    = t.originalAmount != null ? parseFloat(t.originalAmount) : null;
+            const discPct    = t.discountPercent != null ? parseFloat(t.discountPercent) : null;
+            const discAmt    = t.discountAmount  != null ? parseFloat(t.discountAmount)  : null;
+            const finalAmt   = t.finalAmount != null ? parseFloat(t.finalAmount) : (parseFloat(t.amount) || null);
+            const notesTxt   = t.notes || t.note || '-';
+            return `
         <tr>
             <td>${new Date(t.timestamp).toLocaleString()}</td>
-            <td>${t.seniorId}</td>
-            <td>${t.seniorName}</td>
-            <td><span style="padding:4px 8px;background:#dcfce7;color:#155e3d;border-radius:6px;font-size:12px">${t.type}</span></td>
-            <td>₱${t.originalAmount.toFixed(2)}</td>
-            <td>${t.discountPercent}% (₱${t.discountAmount.toFixed(2)})</td>
-            <td><strong>₱${t.finalAmount.toFixed(2)}</strong></td>
-            <td>${t.notes || '-'}</td>
-        </tr>
-    `).join('');
+            <td>${seniorId}</td>
+            <td>${seniorName}</td>
+            <td><span style="padding:4px 8px;background:#dcfce7;color:#155e3d;border-radius:6px;font-size:12px">${t.type || '—'}</span></td>
+            <td>${origAmt != null ? '₱' + origAmt.toFixed(2) : '—'}</td>
+            <td>${discPct != null && discAmt != null ? discPct + '% (₱' + discAmt.toFixed(2) + ')' : '—'}</td>
+            <td><strong>${finalAmt != null ? '₱' + finalAmt.toFixed(2) : '—'}</strong></td>
+            <td>${notesTxt}</td>
+        </tr>`;
+        }).join('');
 }
 
 function saveMerchantProfile() {

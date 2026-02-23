@@ -1,8 +1,8 @@
 // Profile Management Functions
 
 function loadProfileInfo() {
-  const session = getSession();
-  if(!session) return;
+  const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+  if(!session || !session.username) return;
   
   // Get initials from username
   const initials = session.username.substring(0, 2).toUpperCase();
@@ -16,8 +16,9 @@ function loadProfileInfo() {
   const roleEl = document.getElementById('profileRole');
   if(roleEl) {
     if(session.role === 'admin') roleEl.textContent = 'System Admin';
-    else if(session.role === 'staff') roleEl.textContent = 'OSCA Staff';
-    else roleEl.textContent = 'Merchant';
+    else if(session.role === 'staff' || session.role === 'osca') roleEl.textContent = 'OSCA Staff';
+    else if(session.role === 'merchant') roleEl.textContent = 'Merchant';
+    else roleEl.textContent = session.role || 'User';
   }
   
   const usernameEl = document.getElementById('profileUsername');
@@ -197,17 +198,18 @@ function changePassword(event) {
   }
   
   // Get current user
-  const session = getSession();
-  if(!session) {
+  const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+  if(!session || !session.username) {
     alert('Session expired. Please login again.');
-    location.href = 'index.html';
+    location.href = '/';
     return;
   }
   
   // Persist to Supabase
-  if (window.db) {
-    window.db.changePassword(session.id, newPassword)
-      .catch(e => console.error('[changePassword]', e));
+  if (window.db && session.id) {
+    window.db.updateStaff(session.id, { password: newPassword })
+      .then(() => console.log('[changePassword] Password updated in Supabase'))
+      .catch(e => console.error('[changePassword] Failed to update password:', e));
   }
 
   alert('Password updated successfully!');
@@ -235,7 +237,7 @@ function closeLogoutModal() {
 
 function confirmLogout() {
   sessionStorage.removeItem('lingap_user');
-  location.href = 'index.html';
+  location.href = '/';
 }
 
 // Initialize profile when page loads
