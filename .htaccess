@@ -8,19 +8,18 @@ RewriteCond %{HTTP_HOST} !^127\.0\.0\.1$
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 
 # ── Clean URLs (remove .html extension) ─────────────────────
-RewriteEngine On
-# If the file exists as-is, serve it
+# Remove .html if someone types it directly (301 redirect to clean URL)
+RewriteCond %{THE_REQUEST} \s(.+)\.html[\s?] [NC]
+RewriteRule ^ /%1 [R=301,L]
+
+# If the exact file or directory exists, serve it as-is
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# If request has no extension and a matching .html file exists, serve it silently
+# If request has no extension and a matching .html file exists, serve silently
 RewriteCond %{REQUEST_FILENAME}.html -f
 RewriteRule ^([^.]+)$ $1.html [L]
-
-# Remove .html if someone types it directly (301 redirect to clean URL)
-RewriteCond %{THE_REQUEST} \s(.+)\.html[\s?] [NC]
-RewriteRule ^ /%1 [R=301,L]
 
 # ── Security Headers ─────────────────────────────────────────
 <IfModule mod_headers.c>

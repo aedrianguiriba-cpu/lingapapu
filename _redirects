@@ -1,1 +1,15 @@
+# ── Redirect .html URLs to clean versions (301) ────────────
+/about.html             /about              301!
+/admin.html             /admin              301!
+/merchant.html          /merchant           301!
+/osca.html              /osca               301!
+/senior.html            /senior             301!
+/senior-mobile.html     /senior-mobile      301!
 
+# ── Serve clean URLs → actual .html files (rewrite, URL stays clean) ──
+/about                  /about.html         200
+/admin                  /admin.html         200
+/merchant               /merchant.html      200
+/osca                   /osca.html          200
+/senior                 /senior.html        200
+/senior-mobile          /senior-mobile.html 200

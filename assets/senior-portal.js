@@ -148,7 +148,7 @@ function setupEventListeners() {
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', (e) => {
         e.preventDefault();
-        sessionStorage.removeItem('currentUser');
+        if (window._Session) { window._Session.clear(); } else { sessionStorage.removeItem('currentUser'); localStorage.removeItem('lingap_session'); }
         window.location.href = 'index.html';
     });
 
@@ -1101,7 +1101,7 @@ function saveProfilePhoto() {
         
         const idPhotoImg = document.querySelector('#idPhoto img');
         if (idPhotoImg) idPhotoImg.src = photoBase64;
-        
+
         showToast('Profile photo updated successfully');
         closePhotoUploadModal();
     }
@@ -1116,3 +1116,4 @@ function loadProfilePhoto() {
         }
     }
 }
+

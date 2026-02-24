@@ -816,6 +816,9 @@ body.modal-open {
     color:#fff!important;
     -webkit-text-fill-color:#fff!important;
   }
+  .nav-header .small{
+    color:rgba(255,255,255,0.8)!important;
+  }
   .navlink{
     padding:14px 20px;
     gap:12px;
@@ -830,9 +833,13 @@ body.modal-open {
     border-left-color:var(--primary);
   }
   .navlink.active{
-    background: transparent;
+    background:rgba(34,197,94,0.1);
     border-left-color:var(--primary);
+    color:var(--primary);
     font-weight:600;
+  }
+  .navlink.active svg{
+    stroke:var(--primary);
   }
   .navlink[data-tab="profile"] {
     margin-left: 0;

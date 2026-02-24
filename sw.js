@@ -1,11 +1,11 @@
 // LingapApu Senior PWA — Service Worker
 // Caches all static assets for offline use
 
-const CACHE_NAME = 'lingapapu-senior-v1';
+const CACHE_NAME = 'lingapapu-senior-v3';
 
 // Core assets to pre-cache on install
 const PRECACHE = [
-  './senior-mobile',
+  './senior-mobile.html',
   './senior-manifest.webmanifest',
   './assets/supabase-config.js',
   './assets/db.js',
@@ -14,7 +14,7 @@ const PRECACHE = [
   'https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.10/dist/umd/supabase.js'
 ];
 
 // ── Install: pre-cache all static assets ─────────────────
@@ -55,7 +55,7 @@ self.addEventListener('fetch', event => {
       }).catch(() => {
         // If offline and no cache — return the app shell for navigation requests
         if (event.request.mode === 'navigate') {
-          return caches.match('./senior-mobile');
+          return caches.match('./senior-mobile.html');
         }
       });
     })

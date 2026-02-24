@@ -236,7 +236,7 @@ function closeLogoutModal() {
 }
 
 function confirmLogout() {
-  sessionStorage.removeItem('lingap_user');
+  if (window._Session) { window._Session.clear(); } else { sessionStorage.removeItem('lingap_user'); localStorage.removeItem('lingap_session'); }
   location.href = '/';
 }
 

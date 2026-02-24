@@ -1,5 +1,53 @@
 // LingapApu v2 - Transaction QR system
+
+// ── Persistent Session ────────────────────────────────────────────────────────
+// Wraps sessionStorage + localStorage so users can stay logged in across tabs
+// and browser restarts when "Remember Me" is checked.
+const LINGAP_SESSION_KEY  = 'lingap_session';
+const LINGAP_SESSION_DAYS = 30;
+window._Session = {
+  /** Save session data. remember=true persists across restarts (30 days). */
+  set(data, remember) {
+    sessionStorage.setItem('currentUser', JSON.stringify(data));
+    if (remember) {
+      localStorage.setItem(LINGAP_SESSION_KEY, JSON.stringify({
+        ...data,
+        expiry: Date.now() + LINGAP_SESSION_DAYS * 86400000
+      }));
+    }
+  },
+  /**
+   * Read active session. Falls back to localStorage and restores
+   * to sessionStorage so all existing page guards still work.
+   */
+  get() {
+    const ss = sessionStorage.getItem('currentUser');
+    if (ss) { try { return JSON.parse(ss); } catch(e) {} }
+    const ls = localStorage.getItem(LINGAP_SESSION_KEY);
+    if (!ls) return null;
+    try {
+      const entry = JSON.parse(ls);
+      if (!entry || !entry.role) return null;
+      if (entry.expiry && Date.now() > entry.expiry) {
+        localStorage.removeItem(LINGAP_SESSION_KEY);
+        return null;
+      }
+      // Restore to sessionStorage so page guards work without modification
+      sessionStorage.setItem('currentUser', JSON.stringify({ role: entry.role, username: entry.username, id: entry.id }));
+      return entry;
+    } catch(e) { return null; }
+  },
+  /** Wipe all session data (call on every logout). */
+  clear() {
+    sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('lingap_user');
+    localStorage.removeItem(LINGAP_SESSION_KEY);
+  }
+};
+
 document.addEventListener('DOMContentLoaded', ()=>{
+  // Sync persisted session from localStorage → sessionStorage for this tab
+  if (window._Session && !document.getElementById('loginBtn')) window._Session.get();
   if(document.getElementById('loginBtn')) initLogin();
   if(document.getElementById('seniorTable')) initAdmin();
   if(document.getElementById('bookletContent')) initSenior();
@@ -1090,10 +1138,34 @@ function seedBenefits() {
 // ===== LOGIN =====
 function initLogin(){
   console.log('Initializing login...');
-  sessionStorage.removeItem('lingap_user');
+  // Always clear sessionStorage when the login page is reached.
+  // This ensures logout always lands on a clean login form regardless of how
+  // the user arrived (explicit logout, expired session, back-button, etc.)
   sessionStorage.removeItem('currentUser');
-  // Login is driven by the form's submit event (registered in the inline script)
-  // and directly by handleLogin() — no extra click/keypress listeners needed here.
+  sessionStorage.removeItem('lingap_user');
+
+  // Only auto-redirect if a *persistent* (Remember Me) session exists in localStorage.
+  // Do NOT rely on sessionStorage here — it may be stale if a page's logout
+  // failed to clear it before redirecting.
+  const ls = localStorage.getItem(LINGAP_SESSION_KEY);
+  if (ls) {
+    try {
+      const entry = JSON.parse(ls);
+      if (entry && entry.role && (!entry.expiry || Date.now() <= entry.expiry)) {
+        // Restore into sessionStorage so downstream page guards still work
+        sessionStorage.setItem('currentUser', JSON.stringify({ role: entry.role, username: entry.username, id: entry.id }));
+        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+        if      (entry.role === 'senior')   { window.location.href = 'senior.html'; return; }
+        else if (entry.role === 'merchant') { window.location.href = 'merchant.html'; return; }
+        else if (entry.role === 'osca')     { window.location.href = 'osca.html'; return; }
+        else if (entry.role === 'admin')    { window.location.href = 'admin.html'; return; }
+      } else {
+        // Expired — clean it up
+        localStorage.removeItem(LINGAP_SESSION_KEY);
+      }
+    } catch(e) { localStorage.removeItem(LINGAP_SESSION_KEY); }
+  }
+  // No valid persistent session — show login form normally
 }
 
 async function handleLogin(){
@@ -1102,6 +1174,14 @@ async function handleLogin(){
   const msg      = document.getElementById('loginMsg');
 
   msg.style.display = 'none';
+
+  // Guard: Supabase must be loaded
+  if (!window.db || !window.supabaseClient) {
+    msg.textContent = '⚠ Cannot connect to the server. Check your internet connection and refresh the page.';
+    msg.className = 'error-msg';
+    msg.style.display = 'block';
+    return;
+  }
 
   // Disable button + show loading
   const btn = document.getElementById('loginBtn');
@@ -1141,27 +1221,25 @@ async function handleLogin(){
     }
 
     // 3. Build session and redirect
-    const role = user.role;
+    const role     = user.role;
+    const remember = document.getElementById('rememberMe')?.checked || false;
     if (role === 'senior') {
       // For senior: senior_id (Supabase) or id (DEMO_USERS fallback)
       const seniorId = user.senior_id || user.id || null;
-      sessionStorage.setItem('currentUser', JSON.stringify({ role: 'senior', username, id: seniorId }));
-      // Redirect to Android/mobile-optimised page on touch devices
-      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
-      window.location.href = isMobile ? 'senior-mobile.html' : 'senior.html';
+      window._Session.set({ role: 'senior', username, id: seniorId }, remember);
+      window.location.href = 'senior.html';
     } else if (role === 'merchant') {
-      sessionStorage.setItem('currentUser', JSON.stringify({ role: 'merchant', username, id: user.id || null }));
+      window._Session.set({ role: 'merchant', username, id: user.id || null }, remember);
       window.location.href = 'merchant.html';
     } else if (role === 'osca') {
-      sessionStorage.setItem('currentUser', JSON.stringify({ role: 'osca', username, id: user.id || null }));
+      window._Session.set({ role: 'osca', username, id: user.id || null }, remember);
       window.location.href = 'osca.html';
     } else if (role === 'admin') {
-      sessionStorage.setItem('currentUser', JSON.stringify({ role: 'admin', username, id: user.id || null }));
+      window._Session.set({ role: 'admin', username, id: user.id || null }, remember);
       window.location.href = 'admin.html';
     } else {
-      sessionStorage.setItem('lingap_user', JSON.stringify({ role, username, seniorId: user.senior_id || user.id || null }));
-      const _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
-      window.location.href = _isMobile ? 'senior-mobile.html' : 'senior.html';
+      window._Session.set({ role, username, id: user.senior_id || user.id || null }, remember);
+      window.location.href = 'senior.html';
     }
   } catch (e) {
     console.error('[login]', e);
@@ -1221,7 +1299,7 @@ function initAdmin(){
   
   // Admin panel buttons
   const logoutBtnEl = document.getElementById('logoutBtn') || document.getElementById('logoutBtnProfile');
-  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ sessionStorage.removeItem('currentUser'); location.href='/'; });
+  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ window._Session.clear(); location.href='/'; });
   
   const saveSeniorBtn = document.getElementById('saveSenior');
   if(saveSeniorBtn) {
@@ -2293,7 +2371,7 @@ function initSenior(){
   const me = profiles.find(p=>p.id===myId);
   if(!me){ alert('Profile not found'); location.href='/'; return; }
   renderSenior(me);
-  document.getElementById('logoutSenior').addEventListener('click', ()=>{ sessionStorage.removeItem('lingap_user'); location.href='/'; });
+  document.getElementById('logoutSenior').addEventListener('click', ()=>{ window._Session.clear(); location.href='/'; });
   document.getElementById('saveNotes').addEventListener('click', ()=>{ me.notes = document.getElementById('seniorNotes').value.trim(); localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles)); alert('Notes saved'); renderSenior(me); });
   document.getElementById('genTxnQR').addEventListener('click', ()=>{ generateTxnQR(me); });
   document.getElementById('downloadSeniorQR').addEventListener('click', ()=>{ const c=document.querySelector('#seniorQR canvas'); if(!c){ alert('No QR'); return; } c.toBlob(b=>{ const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download=`${me.id}_txn_qr.png`; a.click(); URL.revokeObjectURL(url); }); });

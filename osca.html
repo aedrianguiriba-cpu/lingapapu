@@ -2,11 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
+    <link rel="icon" type="image/png" href="assets/pics/logo.png">
+    <link rel="apple-touch-icon" href="assets/pics/logo.png">
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>LingapApu — OSCA/MSWD Staff</title>
     <link rel="stylesheet" href="assets/style.css">
     <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.10/dist/umd/supabase.js"></script>
     <script src="assets/supabase-config.js"></script>
     <script src="assets/db.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -1861,7 +1863,7 @@ function getBirthdayIncentiveAmount(age) {
 
 // Logout
 document.getElementById('logoutBtnOSCA').addEventListener('click', () => {
-    sessionStorage.removeItem('currentUser');
+    if (window._Session) { window._Session.clear(); } else { sessionStorage.removeItem('currentUser'); localStorage.removeItem('lingap_session'); }
     window.location.href = '/';
 });
 </script>
