@@ -111,8 +111,8 @@ function setupTabs() {
   const hash = window.location.hash.replace('#', '');
   
   // Determine default tab based on page
-  const isMerchantPage = /\/merchant(\.html)?$/i.test(window.location.pathname);
-  const isOSCAPage = /\/osca(\.html)?$/i.test(window.location.pathname);
+  const isMerchantPage = /\/merchant(\.html|\.php)?$/i.test(window.location.pathname);
+  const isOSCAPage = /\/osca(\.html|\.php)?$/i.test(window.location.pathname);
   const merchantTabs = ['scanner', 'history', 'profile'];
   const oscaTabs = ['verify', 'update', 'transactions', 'eligibility', 'profile'];
   const adminTabs = ['dashboard', 'seniors', 'registrations', 'benefits', 'staff', 'profile'];
@@ -144,10 +144,10 @@ function setupTabs() {
 function highlightActiveNav(){
   // Normalise both sides — strip .html, treat empty path as 'index'
   const rawPage = location.pathname.split('/').pop() || '';
-  const current = (rawPage.replace(/\.html$/i, '') || 'index').toLowerCase();
+  const current = (rawPage.replace(/\.(html|php)$/i, '') || 'index').toLowerCase();
   document.querySelectorAll('.navlink').forEach(a=>{
     const rawHref = (a.getAttribute('href')||'').split('/').pop() || '';
-    const href = (rawHref.replace(/\.html$/i, '') || 'index').toLowerCase();
+    const href = (rawHref.replace(/\.(html|php)$/i, '') || 'index').toLowerCase();
     if(href === current) a.classList.add('active'); else a.classList.remove('active');
   });
 }
@@ -1155,10 +1155,11 @@ function initLogin(){
         // Restore into sessionStorage so downstream page guards still work
         sessionStorage.setItem('currentUser', JSON.stringify({ role: entry.role, username: entry.username, id: entry.id }));
         const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
-        if      (entry.role === 'senior')   { window.location.href = 'senior.html'; return; }
-        else if (entry.role === 'merchant') { window.location.href = 'merchant.html'; return; }
-        else if (entry.role === 'osca')     { window.location.href = 'osca.html'; return; }
-        else if (entry.role === 'admin')    { window.location.href = 'admin.html'; return; }
+        // Redirect seniors to senior-mobile.php for mobile devices, otherwise senior.php
+        if      (entry.role === 'senior')   { window.location.href = isMobile ? 'senior-mobile.php' : 'senior.php'; return; }
+        else if (entry.role === 'merchant') { window.location.href = 'merchant.php'; return; }
+        else if (entry.role === 'osca')     { window.location.href = 'osca.php'; return; }
+        else if (entry.role === 'admin')    { window.location.href = 'admin.php'; return; }
       } else {
         // Expired — clean it up
         localStorage.removeItem(LINGAP_SESSION_KEY);
@@ -1223,23 +1224,32 @@ async function handleLogin(){
     // 3. Build session and redirect
     const role     = user.role;
     const remember = document.getElementById('rememberMe')?.checked || false;
+
+    // Helper: persist PHP session then redirect
+    const goTo = async (dest, sessionData) => {
+      window._Session.set(sessionData, remember);
+      try {
+        await fetch('set-session.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sessionData)
+        });
+      } catch(e) { /* non-fatal — PHP session best-effort */ }
+      window.location.href = dest;
+    };
+
     if (role === 'senior') {
-      // For senior: senior_id (Supabase) or id (DEMO_USERS fallback)
       const seniorId = user.senior_id || user.id || null;
-      window._Session.set({ role: 'senior', username, id: seniorId }, remember);
-      window.location.href = 'senior.html';
+      await goTo('senior.php', { role: 'senior', username, id: seniorId });
     } else if (role === 'merchant') {
-      window._Session.set({ role: 'merchant', username, id: user.id || null }, remember);
-      window.location.href = 'merchant.html';
+      await goTo('merchant.php', { role: 'merchant', username, id: user.id || null });
     } else if (role === 'osca') {
-      window._Session.set({ role: 'osca', username, id: user.id || null }, remember);
-      window.location.href = 'osca.html';
+      await goTo('osca.php', { role: 'osca', username, id: user.id || null });
     } else if (role === 'admin') {
-      window._Session.set({ role: 'admin', username, id: user.id || null }, remember);
-      window.location.href = 'admin.html';
+      await goTo('admin.php', { role: 'admin', username, id: user.id || null });
     } else {
-      window._Session.set({ role, username, id: user.senior_id || user.id || null }, remember);
-      window.location.href = 'senior.html';
+      const seniorId = user.senior_id || user.id || null;
+      await goTo('senior.php', { role, username, id: seniorId });
     }
   } catch (e) {
     console.error('[login]', e);
@@ -1261,7 +1271,7 @@ const DEMO_PENDING_REGISTRATIONS = [];
 
 function initAdmin(){
   const s = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-  if(!s || s.role!=='admin'){ location.href='/'; return; }
+  if(!s || s.role!=='admin'){ location.href='index.php'; return; }
   
   console.log('[initAdmin] Admin session verified, starting dashboard initialization...');
   console.log('[initAdmin] Supabase client available:', !!window.supabaseClient);
@@ -1299,7 +1309,7 @@ function initAdmin(){
   
   // Admin panel buttons
   const logoutBtnEl = document.getElementById('logoutBtn') || document.getElementById('logoutBtnProfile');
-  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ window._Session.clear(); location.href='/'; });
+  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ window._Session.clear(); location.href='logout.php'; });
   
   const saveSeniorBtn = document.getElementById('saveSenior');
   if(saveSeniorBtn) {
@@ -2365,13 +2375,13 @@ function populateReports(){
 
 // ===== SENIOR =====
 function initSenior(){
-  const s = getSession(); if(!s || s.role!=='senior'){ location.href='/'; return; }
+  const s = getSession(); if(!s || s.role!=='senior'){ location.href='index.php'; return; }
   loadProfiles();
   const myId = s.seniorId || 'LGAPU-001';
   const me = profiles.find(p=>p.id===myId);
-  if(!me){ alert('Profile not found'); location.href='/'; return; }
+  if(!me){ alert('Profile not found'); location.href='index.php'; return; }
   renderSenior(me);
-  document.getElementById('logoutSenior').addEventListener('click', ()=>{ window._Session.clear(); location.href='/'; });
+  document.getElementById('logoutSenior').addEventListener('click', ()=>{ window._Session.clear(); location.href='logout.php'; });
   document.getElementById('saveNotes').addEventListener('click', ()=>{ me.notes = document.getElementById('seniorNotes').value.trim(); localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles)); alert('Notes saved'); renderSenior(me); });
   document.getElementById('genTxnQR').addEventListener('click', ()=>{ generateTxnQR(me); });
   document.getElementById('downloadSeniorQR').addEventListener('click', ()=>{ const c=document.querySelector('#seniorQR canvas'); if(!c){ alert('No QR'); return; } c.toBlob(b=>{ const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; a.download=`${me.id}_txn_qr.png`; a.click(); URL.revokeObjectURL(url); }); });

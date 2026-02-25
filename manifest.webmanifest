@@ -2,7 +2,7 @@
   "name": "LingapApu — Senior Citizen Portal",
   "short_name": "LingapApu",
   "description": "Senior Citizen Management System for Floridablanca, Pampanga",
-  "start_url": "./index.html",
+  "start_url": "./index.php",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

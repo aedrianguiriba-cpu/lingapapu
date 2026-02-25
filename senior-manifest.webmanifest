@@ -2,7 +2,7 @@
   "name": "LingapApu Senior",
   "short_name": "LingapApu",
   "description": "Senior Citizen ID, QR Code & Transaction Portal",
-  "start_url": "./senior-mobile.html",
+  "start_url": "./senior-mobile.php",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -62,14 +62,14 @@
       "name": "My QR Code",
       "short_name": "QR Code",
       "description": "Show my senior QR code",
-      "url": "./senior-mobile.html#qr",
+      "url": "./senior-mobile.php#qr",
       "icons": [{ "src": "assets/pics/logo.png", "sizes": "96x96" }]
     },
     {
       "name": "My Transactions",
       "short_name": "Transactions",
       "description": "View my transaction history",
-      "url": "./senior-mobile.html#tx",
+      "url": "./senior-mobile.php#tx",
       "icons": [{ "src": "assets/pics/logo.png", "sizes": "96x96" }]
     }
   ]

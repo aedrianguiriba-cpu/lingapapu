@@ -1,0 +1,1972 @@
+<?php
+session_start();
+// If already logged in, redirect to the right portal
+if (!empty($_SESSION['role'])) {
+    $isMobile = preg_match('/Android|iPhone|iPad|iPod|Mobile|mobile/i', $_SERVER['HTTP_USER_AGENT'] ?? '') || (isset($_SERVER['HTTP_WIDTH']) && $_SERVER['HTTP_WIDTH'] < 768);
+    $map = [
+        'senior' => ($isMobile ? 'senior-mobile.php' : 'senior.php'),
+        'merchant' => 'merchant.php',
+        'osca' => 'osca.php',
+        'admin' => 'admin.php'
+    ];
+    $dest = $map[$_SESSION['role']] ?? 'index.php';
+    header('Location: ' . $dest);
+    exit;
+}
+?>
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>LingapApu — Login</title>
+<link rel="icon" type="image/png" href="assets/pics/logo.png">
+<link rel="apple-touch-icon" href="assets/pics/logo.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#22c55e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LingapApu">
+<link rel="apple-touch-icon" href="assets/pics/logo.png">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  /* ── Reset / base ── */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* ── Page layout ── */
+  body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; background: #f4f7f6; }
+
+  .login-wrapper {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Left branding panel ── */
+  .brand-panel {
+    width: 42%;
+    flex-shrink: 0;
+    background: linear-gradient(160deg, #166534 0%, #22c55e 60%, #4ade80 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 56px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .brand-panel::before {
+    content: '';
+    position: absolute;
+    width: 360px; height: 360px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+    top: -120px; right: -100px;
+  }
+  .brand-panel::after {
+    content: '';
+    position: absolute;
+    width: 280px; height: 280px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50%;
+    bottom: -80px; left: -80px;
+  }
+  .brand-logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 52px;
+    position: relative; z-index: 2;
+  }
+  .brand-logo-icon {
+    width: 52px; height: 52px;
+    background: rgba(255,255,255,0.2);
+    border: 1.5px solid rgba(255,255,255,0.35);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px;
+  }
+  .brand-logo-icon img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+  .brand-logo-text {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+  .brand-logo-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    margin-top: 2px;
+  }
+  .brand-headline {
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    letter-spacing: -0.8px;
+    margin: 0 0 14px;
+    position: relative; z-index: 2;
+  }
+  .brand-tagline {
+    font-size: 15px;
+    color: rgba(255,255,255,0.82);
+    line-height: 1.6;
+    margin: 0 0 44px;
+    font-weight: 400;
+    position: relative; z-index: 2;
+  }
+  .brand-features {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: relative; z-index: 2;
+  }
+  .brand-feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .brand-feature-icon {
+    width: 38px; height: 38px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .brand-feature-text strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+  .brand-feature-text span {
+    font-size: 12px;
+    color: rgba(255,255,255,0.72);
+    line-height: 1.5;
+  }
+  .brand-footer {
+    margin-top: 52px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.55);
+    position: relative; z-index: 2;
+  }
+
+  /* ── Right form panel ── */
+  .form-panel {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 24px;
+    overflow-y: auto;
+    background: #f4f7f6;
+  }
+  .login-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 44px 40px;
+    width: 100%;
+    max-width: 440px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    animation: fadeUp 0.35s ease-out both;
+    margin: auto 0;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  /* ── Logo in card (mobile only top) ── */
+  .card-logo {
+    display: none;
+    width: 48px; height: 48px;
+    background: #22c55e;
+    border-radius: 12px;
+    align-items: center; justify-content: center;
+    padding: 10px;
+    margin: 0 auto 20px;
+  }
+  .card-logo img {
+    width: 100%; height: 100%; object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+
+  /* ── Form header ── */
+  .login-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 6px;
+    letter-spacing: -0.5px;
+  }
+  .login-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 32px;
+    font-weight: 400;
+  }
+  .form-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0 0 6px;
+    letter-spacing: -0.5px;
+    text-align: left;
+  }
+  .form-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 28px;
+    font-weight: 400;
+    text-align: left;
+  }
+
+  /* ── Inputs ── */
+  .input-group {
+    position: relative;
+    margin-bottom: 18px;
+  }
+  .input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .input-group input, .input-group select, .input-group textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    background: #f9fafb;
+    color: #111827;
+    font-weight: 500;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .input-group input::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+  }
+  .input-group input:hover {
+    border-color: #d1d5db;
+    background: #fff;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: #22c55e;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.12);
+  }
+
+  /* ── Divider label ── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 18px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .section-divider::before,
+  .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+  }
+
+  /* ── Primary button ── */
+  .login-btn {
+    width: 100%;
+    padding: 13px;
+    background: #22c55e;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    letter-spacing: 0.1px;
+  }
+  .login-btn:hover { background: #16a34a; }
+  .login-btn:active { background: #15803d; transform: scale(0.99); }
+
+  /* ── Auth links ── */
+  .auth-links {
+    margin-top: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 18px;
+    border-top: 1.5px solid #f3f4f6;
+    font-size: 13px;
+    color: #6b7280;
+  }
+  .auth-link {
+    color: #16a34a;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    transition: color 0.2s;
+  }
+  .auth-link:hover { color: #15803d; }
+
+  /* ── Back link ── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: #16a34a;
+    font-weight: 600;
+    text-decoration: none;
+    margin-bottom: 22px;
+    transition: color 0.2s, transform 0.2s;
+  }
+  .back-link:hover { color: #15803d; transform: translateX(-2px); }
+
+  
+
+  /* ── Messages ── */
+  .error-msg {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+    border-radius: 10px;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .success-msg {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    border-radius: 10px;
+    color: #15803d;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* ── Remember Me ── */
+  .remember-row {
+    display: flex; align-items: center; gap: 10px;
+    margin: 4px 0 16px;
+  }
+  .remember-row input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: #22c55e; cursor: pointer; flex-shrink: 0;
+  }
+  .remember-row label {
+    font-size: 13px; color: #6b7280; cursor: pointer; user-select: none;
+    line-height: 1.4;
+  }
+  .remember-row label b { color: #374151; font-weight: 600; }
+
+  /* ── Mobile ── */
+  @media (max-width: 860px) {
+    .brand-panel { display: none; }
+    .form-panel { background: #f0fdf4; padding: 28px 16px; }
+    .login-card { padding: 36px 28px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+    .card-logo { display: flex; }
+    .login-title, .form-title { text-align: center; }
+    .login-subtitle, .form-subtitle { text-align: center; }
+    .auth-links { flex-direction: column; gap: 10px; text-align: center; }
+    .login-card { padding: 28px 20px; border-radius: 14px; }
+  }
+</style><!--ORPHAN_CSS_REMOVED
+  .login-container::after {
+    content: '';
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: transparent;
+    border-radius: 50%;
+    bottom: -150px;
+    left: -100px;
+  }
+  .login-card {
+    background: #ffffff;
+    backdrop-filter: none;
+    border-radius: 8px;
+    padding: 40px 36px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: none;
+    position: relative;
+    z-index: 10;
+    border: 1px solid var(--border);
+  }
+  .login-logo {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 28px;
+    background: #22c55e;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    box-shadow: none;
+  }
+  .login-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(10000%) hue-rotate(88deg);
+  }
+  .login-title {
+    margin: 0 0 8px 0;
+    font-size: 32px;
+    font-weight: 600;
+    color: #1f2937;
+    letter-spacing: 0;
+    text-align: center;
+  }
+  .login-subtitle {
+    margin: 0 0 32px 0;
+    font-size: 14px;
+    color: #6b7280;
+    text-align: center;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  .role-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .role-option {
+    padding: 11px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+  .role-option:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+  }
+  .role-option.active {
+    background: #f0fdf4;
+    border-color: #22c55e;
+  }
+  .role-option.active .role-name {
+    color: #16a34a;
+    font-weight: 600;
+  }
+  .role-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .role-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374155;
+    flex: 1;
+    text-align: left;
+  }
+  .input-group {
+    position: relative;
+    margin-bottom: 18px;
+  }
+  .input-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .input-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    color: #1f2937;
+    font-weight: 400;
+  }
+  .input-group input::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+  }
+  .input-group input:hover {
+    border-color: #d1d5db;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: #22c55e;
+    box-shadow: none;
+  }
+  .login-btn {
+    width: 100%;
+    padding: 10px;
+    background: #22c55e;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: none;
+    margin-top: 8px;
+    letter-spacing: 0;
+  }
+  .login-btn:hover {
+    background: #16a34a;
+  }
+  .login-btn:active {
+    background: #15803d;
+  }
+  .error-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: #fee2e2;
+    border-radius: 8px;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .success-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: #dcfce7;
+    border-radius: 8px;
+    border: 1px solid #86efac;
+    color: #15803d;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .auth-link {
+    display: inline-block;
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  .auth-link:hover {
+    color: #155e3d;
+  }
+  .auth-links {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: #475569;
+    padding-top: 20px;
+    border-top: 1.5px solid #e5e7eb;
+  }
+  .auth-links a {
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 4px;
+    transition: color 0.2s ease;
+  }
+  .auth-links a:hover {
+    color: #155e3d;
+  }
+  .form-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 12px 0;
+    text-align: center;
+    letter-spacing: -0.5px;
+  }
+  .form-subtitle {
+    font-size: 15px;
+    color: #475569;
+    text-align: center;
+    margin: 0 0 32px 0;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 24px;
+    transition: all 0.2s ease;
+  }
+  .back-link:hover {
+    color: #155e3d;
+    transform: translateX(-3px);
+  }
+  .back-link svg {
+    transition: transform 0.2s ease;
+  }
+  .back-link:hover svg {
+    transform: translateX(-2px);
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .login-card {
+    animation: fadeIn 0.4s ease-out;
+  }
+  .role-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .role-option {
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+  .role-option:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+  .role-option.active {
+    background: #dcfce7;
+    border-color: #16a34a;
+  }
+  .role-option.active .role-name {
+    color: #155e3d;
+    font-weight: 600;
+  }
+  .role-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .role-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #334155;
+    flex: 1;
+    text-align: left;
+  }
+  .input-group {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .input-group input {
+    width: 100%;
+    padding: 13px 15px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    background: #f8fafc;
+    color: #1e293b;
+    font-weight: 500;
+  }
+  .input-group input::placeholder {
+    color: #94a3b8;
+    font-weight: 400;
+  }
+  .input-group input:hover {
+    border-color: #cbd5e1;
+    background: #ffffff;
+  }
+  .input-group input:focus {
+    outline: none;
+    border-color: #16a34a;
+    background: #ffffff;
+  }
+  .login-btn {
+    width: 100%;
+    padding: 13px;
+    background: #16a34a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    box-shadow: none;
+    margin-top: 12px;
+    letter-spacing: 0.3px;
+  }
+  .login-btn:hover {
+    background: #15803d;
+  }
+  .login-btn:active {
+    background: #166534;
+  }
+  .error-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: #fee2e2;
+    border-radius: 8px;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .success-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: #dcfce7;
+    border-radius: 8px;
+    border: 1px solid #86efac;
+    color: #15803d;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .auth-link {
+    display: inline-block;
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  .auth-link:hover {
+    color: #155e3d;
+  }
+  .auth-links {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: #475569;
+    padding-top: 20px;
+    border-top: 1.5px solid #e5e7eb;
+  }
+  .auth-links a {
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 4px;
+    transition: color 0.2s ease;
+  }
+  .auth-links a:hover {
+    color: #155e3d;
+  }
+  .form-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 12px 0;
+    text-align: center;
+    letter-spacing: -0.5px;
+  }
+  .form-subtitle {
+    font-size: 15px;
+    color: #475569;
+    text-align: center;
+    margin: 0 0 32px 0;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 24px;
+    transition: all 0.2s ease;
+  }
+  .back-link:hover {
+    color: #155e3d;
+    transform: translateX(-3px);
+  }
+  .back-link svg {
+    transition: transform 0.2s ease;
+  }
+  .back-link:hover svg {
+    transform: translateX(-2px);
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .login-card {
+    animation: fadeIn 0.4s ease-out;
+  }
+  .error-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .success-msg {
+    margin-top: 16px;
+    padding: 13px 15px;
+    background: rgba(34, 197, 94, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(34, 197, 94, 0.5);
+    color: #86efac;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .auth-link {
+    display: inline-block;
+    color: #93c5fd;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  .auth-link:hover {
+    color: #bbf7d0;
+  }
+  .auth-links {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: #cbd5e1;
+    padding-top: 20px;
+    border-top: 1.5px solid rgba(255,255,255,0.1);
+  }
+  .auth-links a {
+    color: #93c5fd;
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 4px;
+    transition: color 0.3s ease;
+  }
+  .auth-links a:hover {
+    color: #bbf7d0;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .login-card {
+    animation: fadeIn 0.4s ease-out;
+  }
+  .form-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 12px 0;
+    text-align: center;
+    letter-spacing: -0.5px;
+  }
+  .form-subtitle {
+    font-size: 15px;
+    color: #475569;
+    text-align: center;
+    margin: 0 0 32px 0;
+    font-weight: 400;
+    letter-spacing: 0.2px;
+  }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #16a34a;
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 24px;
+    transition: all 0.2s ease;
+  }
+  .back-link:hover {
+    color: #155e3d;
+    transform: translateX(-3px);
+  }
+  .back-link svg {
+    transition: transform 0.2s ease;
+  }
+  .back-link:hover svg {
+    transform: translateX(-2px);
+  }
+  @media (max-width: 480px) {
+    .login-card {
+      padding: 40px 24px;
+      border-radius: 24px;
+    }
+    .login-logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 20px;
+      background: #22c55e;
+      box-shadow: none;
+    }
+    .login-title {
+      font-size: 32px;
+    }
+    .login-subtitle {
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .input-group {
+      margin-bottom: 20px;
+    }
+    .input-group input {
+      padding: 14px 16px;
+      font-size: 16px;
+    }
+    .login-btn {
+      padding: 16px;
+      font-size: 15px;
+      margin-top: 8px;
+    }
+    .auth-links {
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 16px;
+    }
+    .auth-link {
+      font-size: 13px;
+    }
+    .form-title {
+      font-size: 24px;
+    }
+    .form-subtitle {
+      font-size: 14px;
+    }
+  }
+  @media (min-width: 1200px) {
+    .login-card {
+      max-width: 520px;
+      padding: 64px 56px;
+    }
+  }
+ORPHAN_CSS_REMOVED-->
+</head>
+<body>
+<div class="login-wrapper">
+
+  <!-- ── Left branding panel ── -->
+  <div class="brand-panel">
+    <div class="brand-logo-wrap">
+      <div class="brand-logo-icon">
+        <img src="assets/pics/logo.png" alt="LingapApu">
+      </div>
+      <div>
+        <div class="brand-logo-text">LingapApu</div>
+        <div class="brand-logo-sub">Floridablanca, Pampanga</div>
+      </div>
+    </div>
+
+    <h2 class="brand-headline">Caring for our<br>Senior Citizens</h2>
+    <p class="brand-tagline">A unified system for managing senior citizen benefits, IDs, transactions, and welfare services.</p>
+
+    <div class="brand-features">
+      <div class="brand-feature">
+        <div class="brand-feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="brand-feature-text">
+          <strong>Senior Citizen Registry</strong>
+          <span>Manage profiles, IDs, and complete senior citizen records</span>
+        </div>
+      </div>
+      <div class="brand-feature">
+        <div class="brand-feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div class="brand-feature-text">
+          <strong>Benefits Management</strong>
+          <span>Track and distribute social welfare benefits seamlessly</span>
+        </div>
+      </div>
+      <div class="brand-feature">
+        <div class="brand-feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="15" x2="13" y2="15"/></svg>
+        </div>
+        <div class="brand-feature-text">
+          <strong>QR-Verified Transactions</strong>
+          <span>Secure merchant discount verification via QR scanning</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="brand-footer">© 2026 LingapApu &mdash; MSWD Floridablanca</div>
+  </div>
+
+  <!-- ── Right form panel ── -->
+  <div class="form-panel">
+    <div class="login-card">
+
+      <!-- Card logo shown on mobile only -->
+      <div class="card-logo">
+        <img src="assets/pics/logo.png" alt="LingapApu">
+      </div>
+
+      <h1 class="login-title">Welcome back</h1>
+      <p class="login-subtitle">Sign in to your LingapApu account</p>
+    
+    <!-- Login Form -->
+    <form id="loginForm" style="display:block">
+      <input type="hidden" id="role" value="auto">
+      
+      <div class="input-group">
+        <label>Username</label>
+        <input id="username" type="text" placeholder="Enter your username" autocomplete="username">
+      </div>
+      
+      <div class="input-group">
+        <label>Password</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <div class="remember-row">
+        <input type="checkbox" id="rememberMe" name="rememberMe">
+        <label for="rememberMe"><b>Remember me</b> &mdash; stay signed in for 30 days</label>
+      </div>
+
+      <button type="submit" class="login-btn" id="loginBtn">
+          Sign In
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+
+      <div id="loginMsg" style="display: none;"></div>
+      
+      <div class="auth-links">
+        <a href="#" class="auth-link" onclick="showSignupForm(); return false;">Senior Signup</a>
+        <a href="#" class="auth-link" onclick="showForgotPasswordForm(); return false;">Forgot Password?</a>
+      </div>
+    </form>
+
+    <!-- Signup Form -->
+    <form id="signupForm" style="display:none">
+
+      <!-- ── Step indicator ── -->
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:20px">
+        <div id="signupStepDot1" style="width:28px;height:28px;border-radius:50%;background:#22c55e;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+        <div id="signupStepBar" style="flex:1;height:3px;background:#e2e8f0;position:relative;margin:0 4px">
+          <div id="signupStepBarFill" style="position:absolute;left:0;top:0;height:100%;width:0%;background:#22c55e;transition:width 0.3s"></div>
+        </div>
+        <div id="signupStepDot2" style="width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#94a3b8;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+      </div>
+
+      <!-- ── STEP 1: Personal Info ── -->
+      <div id="signupStep1">
+        <a href="#" class="back-link" onclick="showLoginForm(); return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to Login
+        </a>
+
+        <h2 class="form-title">Personal Information</h2>
+        <p class="form-subtitle">Step 1 of 2 &mdash; Basic details</p>
+
+        <div class="input-group">
+          <label>Full Name</label>
+          <input id="signupName" type="text" placeholder="Juan Dela Cruz" required>
+        </div>
+
+        <div class="input-group">
+          <label>Birth Date</label>
+          <input id="signupBirth" type="date" required>
+        </div>
+
+        <div class="input-group">
+          <label>Contact Number</label>
+          <input id="signupContact" type="tel" placeholder="09XX XXX XXXX" required>
+        </div>
+
+        <div class="input-group">
+          <label>City (Pampanga)</label>
+          <select id="signupAddress" required style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;color:var(--text)">
+            <option value="">Select City</option>
+            <option value="Arayat">Arayat</option>
+            <option value="Candaba">Candaba</option>
+            <option value="Floridablanca">Floridablanca</option>
+            <option value="Guagua">Guagua</option>
+            <option value="Lubao">Lubao</option>
+            <option value="Mabalacat">Mabalacat</option>
+            <option value="Magalang">Magalang</option>
+            <option value="Masantol">Masantol</option>
+            <option value="Mexico">Mexico</option>
+            <option value="Minalin">Minalin</option>
+            <option value="Porac">Porac</option>
+            <option value="San Fernando">San Fernando</option>
+            <option value="San Luis">San Luis</option>
+            <option value="Santa Ana">Santa Ana</option>
+            <option value="Santa Rita">Santa Rita</option>
+            <option value="Sasmuan">Sasmuan</option>
+            <option value="Capas">Capas</option>
+            <option value="Concepcion">Concepcion</option>
+            <option value="Macabebe">Macabebe</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>Gender</label>
+          <select id="signupGender" required style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;color:var(--text)">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+            <option value="Prefer not to say">Prefer not to say</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>Civil Status</label>
+          <select id="signupCivilStatus" required style="width:100%;padding:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;color:var(--text)">
+            <option value="">Select Civil Status</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+            <option value="Widowed">Widowed</option>
+            <option value="Separated">Separated</option>
+            <option value="Annulled">Annulled</option>
+            <option value="Divorced">Divorced</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>Barangay</label>
+          <input id="signupBarangay" type="text" placeholder="e.g. Poblacion" required style="width:100%">
+        </div>
+
+        <div id="signupStep1Msg" class="error-msg" style="display:none"></div>
+
+        <button type="button" class="login-btn" onclick="signupNextStep()">
+          Next
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      <!-- ── STEP 2: Account & Photo ── -->
+      <div id="signupStep2" style="display:none">
+        <a href="#" class="back-link" onclick="signupPrevStep(); return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </a>
+
+        <h2 class="form-title">Account &amp; Photo</h2>
+        <p class="form-subtitle">Step 2 of 2 &mdash; Login credentials &amp; ID photo</p>
+
+        <div class="input-group">
+          <label>Username</label>
+          <input id="signupUsername" type="text" placeholder="Choose a username" autocomplete="username" required>
+        </div>
+
+        <div class="input-group">
+          <label>Password</label>
+          <input id="signupPassword" type="password" placeholder="••••••••" autocomplete="new-password" required>
+          <small style="color:#64748b;font-size:12px;margin-top:4px;display:block">Minimum 4 characters</small>
+        </div>
+
+        <div class="input-group">
+          <label>Confirm Password</label>
+          <input id="signupConfirmPassword" type="password" placeholder="••••••••" autocomplete="new-password" required>
+        </div>
+
+        <div class="input-group">
+          <label>ID Photo (Camera Required)</label>
+          <p style="margin:0 0 12px;font-size:12px;color:#64748b;line-height:1.6">
+            <strong style="color:#334155">Guide for taking a proper ID photo:</strong><br>
+            ✓ Face must be clear and straight<br>
+            ✓ Look directly at camera<br>
+            ✓ Good lighting (avoid shadows)<br>
+            ✓ No sunglasses or hats<br>
+            ✓ Plain background preferred
+          </p>
+
+          <div id="cameraContainer" style="position:relative;border-radius:8px;overflow:hidden;background:#000;margin-bottom:12px;aspect-ratio:9/12">
+            <video id="signupCameraVideo" autoplay muted playsinline style="width:100%;height:100%;display:none;background:#000;object-fit:cover"></video>
+
+            <!-- Start Camera Button -->
+            <div id="cameraStartButton" style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:#ffffff">
+              <button type="button" onclick="initializeCamera()" style="background:#22c55e;color:#fff;border:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.2s ease;display:flex;align-items:center;gap:10px" onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="3.5"/><path d="M12 4c4.418 0 8 1.79 8 4v8c0 2.21-3.582 4-8 4s-8-1.79-8-4V8c0-2.21 3.582-4 8-4m0-2C6.477 2 2 4.686 2 8v8c0 3.314 4.477 6 10 6s10-2.686 10-6V8c0-3.314-4.477-6-10-6z"/>
+                </svg>
+                Start Camera
+              </button>
+            </div>
+
+            <!-- Camera Guide Overlay -->
+            <div id="cameraGuideOverlay" style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;display:none">
+              <svg style="position:absolute;top:0;left:0;width:100%;height:100%" viewBox="0 0 400 533" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                  <mask id="faceMask">
+                    <rect width="400" height="533" fill="white"/>
+                    <ellipse cx="200" cy="220" rx="140" ry="170" fill="black"/>
+                  </mask>
+                </defs>
+                <rect width="400" height="533" fill="rgba(0,0,0,0.4)" mask="url(#faceMask)"/>
+                <ellipse cx="200" cy="220" rx="140" ry="170" fill="none" stroke="#667eea" stroke-width="2" stroke-dasharray="5,5" opacity="0.8"/>
+                <line x1="200" y1="50" x2="200" y2="490" stroke="#667eea" stroke-width="1" opacity="0.5" stroke-dasharray="3,3"/>
+                <line x1="60" y1="220" x2="340" y2="220" stroke="#667eea" stroke-width="1" opacity="0.5" stroke-dasharray="3,3"/>
+                <circle cx="170" cy="140" r="15" fill="none" stroke="#10b981" stroke-width="2" opacity="0.6"/>
+                <circle cx="230" cy="140" r="15" fill="none" stroke="#10b981" stroke-width="2" opacity="0.6"/>
+                <text x="200" y="480" font-size="14" font-weight="bold" fill="#10b981" text-anchor="middle" opacity="0.9">Position face in oval frame</text>
+              </svg>
+              <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);padding:20px 16px 12px;color:#fff;font-size:12px;text-align:center">
+                <div id="cameraHint" style="color:#10b981;font-weight:600;margin-bottom:4px">Center your face</div>
+                <div style="color:#cbd5e1;font-size:11px;line-height:1.4">📸 Look straight at camera • Ensure face is well-lit</div>
+              </div>
+            </div>
+
+            <div id="cameraNotSupported" style="display:none;padding:40px 20px;text-align:center;background:#fef2f2;border-radius:12px;border:2px solid #fca5a5;position:absolute;top:0;left:0;right:0;bottom:0;flex-direction:column;align-items:center;justify-content:center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" style="margin:0 auto 12px;display:block"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p style="margin:0;font-size:14px;color:#991b1b;font-weight:600">Camera not available</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#7f1d1d">Please enable camera access or use a device with a camera</p>
+            </div>
+
+            <div id="photoPreview" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;text-align:center;padding:12px;background:#fff;border-radius:12px;flex-direction:column;align-items:center;justify-content:center">
+              <canvas id="capturedPhotoCanvas" style="width:100%;aspect-ratio:1;border-radius:8px;object-fit:contain;background:#f8fafc"></canvas>
+              <p style="margin:12px 0 0;font-size:12px;color:#64748b">Photo captured</p>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button type="button" id="capturePhotoBtn" class="btn" style="flex:1;display:none" onclick="capturePhoto()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="12" r="8"/></svg>
+              Capture Photo
+            </button>
+            <button type="button" id="retakePhotoBtn" class="btn ghost" style="flex:1;display:none" onclick="retakePhoto()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:middle"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              Retake
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="login-btn">Submit Registration</button>
+
+        <div id="signupMsg" class="error-msg" style="display:none"></div>
+        <div id="signupSuccess" class="success-msg" style="display:none"></div>
+      </div>
+
+    </form>
+
+    <!-- Forgot Password Form -->
+    <form id="forgotPasswordForm" style="display:none">
+      <a href="#" class="back-link" onclick="showLoginForm(); return false;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to Login
+      </a>
+      
+      <h2 class="form-title">Reset Password</h2>
+      <p class="form-subtitle">Enter your mobile number to reset your password</p>
+      
+      <div class="input-group">
+        <label>Mobile Number</label>
+        <input id="forgotUsername" type="tel" placeholder="09XX XXX XXXX" pattern="[0-9]{10,11}" required>
+      </div>
+      
+      <div class="input-group" id="otpGroup" style="display:none">
+        <label>Verification Code</label>
+        <input id="otpCode" type="text" placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]{6}" style="text-align: center; font-size: 20px; letter-spacing: 8px;">
+        <small style="color: #667eea; font-size: 12px; margin-top: 4px; display: block; font-weight: 600;" id="otpDisplay"></small>
+      </div>
+      
+      <div class="input-group" id="newPasswordGroup" style="display:none">
+        <label>New Password</label>
+        <input id="newPassword" type="password" placeholder="••••••••" autocomplete="new-password">
+        <small style="color: #64748b; font-size: 12px; margin-top: 4px; display: block;">Minimum 4 characters</small>
+      </div>
+      
+      <div class="input-group" id="confirmPasswordGroup" style="display:none">
+        <label>Confirm Password</label>
+        <input id="confirmPassword" type="password" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      
+      <button type="submit" class="login-btn" id="forgotBtn">Reset Password</button>
+      
+      <div id="forgotMsg" class="error-msg" style="display:none"></div>
+      <div id="forgotSuccess" class="success-msg" style="display:none"></div>
+    </form>
+
+    </div><!-- /.login-card -->
+  </div><!-- /.form-panel -->
+</div><!-- /.login-wrapper -->
+
+<script>
+  // Storage keys
+  const PROFILES_KEY = 'lingap_profiles_v3';
+  const PENDING_KEY = 'lingap_pending_registrations';
+  const STAFF_KEY = 'lingap_staff_v1';
+
+  // Form switching
+  function showLoginForm() {
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('signupForm').style.display = 'none';
+    document.getElementById('forgotPasswordForm').style.display = 'none';
+    
+    // Stop camera stream and face detection
+    stopFaceDetection();
+    if (cameraVideo && cameraVideo.srcObject) {
+      cameraVideo.srcObject.getTracks().forEach(track => track.stop());
+      cameraVideo.srcObject = null;
+    }
+    
+    clearMessages();
+  }
+
+  function showSignupForm() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('signupForm').style.display = 'block';
+    document.getElementById('forgotPasswordForm').style.display = 'none';
+    // Always reset to step 1
+    _setSignupStep(1);
+    clearMessages();
+  }
+
+  function _setSignupStep(step) {
+    const s1 = document.getElementById('signupStep1');
+    const s2 = document.getElementById('signupStep2');
+    const dot1 = document.getElementById('signupStepDot1');
+    const dot2 = document.getElementById('signupStepDot2');
+    const bar  = document.getElementById('signupStepBarFill');
+    if (!s1 || !s2) return;
+    if (step === 1) {
+      s1.style.display = 'block';
+      s2.style.display = 'none';
+      dot1.style.background = '#22c55e'; dot1.style.color = '#fff';
+      dot2.style.background = '#e2e8f0'; dot2.style.color = '#94a3b8';
+      if (bar) bar.style.width = '0%';
+    } else {
+      s1.style.display = 'none';
+      s2.style.display = 'block';
+      dot1.style.background = '#22c55e'; dot1.style.color = '#fff';
+      dot2.style.background = '#22c55e'; dot2.style.color = '#fff';
+      if (bar) bar.style.width = '100%';
+    }
+  }
+
+  function signupNextStep() {
+    const name    = document.getElementById('signupName').value.trim();
+    const birth   = document.getElementById('signupBirth').value;
+    const contact = document.getElementById('signupContact').value.trim();
+    const address = document.getElementById('signupAddress').value.trim();
+    const gender  = document.getElementById('signupGender').value.trim();
+    const civilStatus = document.getElementById('signupCivilStatus').value.trim();
+    const barangay    = document.getElementById('signupBarangay').value.trim();
+    const msgEl   = document.getElementById('signupStep1Msg');
+
+    msgEl.style.display = 'none';
+    msgEl.textContent = '';
+
+    if (!name || !birth || !contact || !address || !gender || !civilStatus || !barangay) {
+      msgEl.textContent = 'Please fill in all fields.';
+      msgEl.style.display = 'block';
+      return;
+    }
+    const age = calculateAge(birth);
+    if (age < 60) {
+      msgEl.textContent = 'You must be 60 years or older to register.';
+      msgEl.style.display = 'block';
+      return;
+    }
+    _setSignupStep(2);
+  }
+
+  function signupPrevStep() {
+    _setSignupStep(1);
+  }
+
+  function showForgotPasswordForm() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('signupForm').style.display = 'none';
+    document.getElementById('forgotPasswordForm').style.display = 'block';
+    document.getElementById('forgotUsername').parentElement.style.display = 'block';
+    document.getElementById('otpGroup').style.display = 'none';
+    document.getElementById('newPasswordGroup').style.display = 'none';
+    document.getElementById('confirmPasswordGroup').style.display = 'none';
+    document.getElementById('forgotBtn').textContent = 'Send Verification Code';
+    document.getElementById('forgotPasswordForm').reset();
+    
+    // Stop face detection
+    stopFaceDetection();
+    if (cameraVideo && cameraVideo.srcObject) {
+      cameraVideo.srcObject.getTracks().forEach(track => track.stop());
+      cameraVideo.srcObject = null;
+    }
+    clearMessages();
+  }
+
+  function clearMessages() {
+    document.getElementById('loginMsg').textContent = '';
+    const _sm = document.getElementById('signupMsg');
+    _sm.textContent = ''; _sm.style.display = 'none';
+    const _ss = document.getElementById('signupSuccess');
+    _ss.textContent = ''; _ss.style.display = 'none';
+    document.getElementById('forgotMsg').textContent = ''; document.getElementById('forgotMsg').style.display = 'none';
+    document.getElementById('forgotSuccess').textContent = ''; document.getElementById('forgotSuccess').style.display = 'none';
+  }
+
+  // Calculate age from birth date
+  function calculateAge(birthDate) {
+    if (!birthDate) return 0;
+    const parts = String(birthDate).split('-');
+    const birth = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  // Generate unique ID
+  function generateSeniorId() {
+    const profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
+    const pending = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+    const allIds = [...profiles, ...pending].map(p => p.id);
+    
+    let newId;
+    do {
+      newId = 'SC' + Math.random().toString().slice(2, 8);
+    } while (allIds.includes(newId));
+    
+    return newId;
+  }
+
+  // Photo upload handling in signup form
+  let capturedPhotoBase64 = null;
+  const cameraVideo = document.getElementById('signupCameraVideo');
+  const captureBtn = document.getElementById('capturePhotoBtn');
+  const retakeBtn = document.getElementById('retakePhotoBtn');
+  const cameraContainer = document.getElementById('cameraContainer');
+  const cameraNotSupported = document.getElementById('cameraNotSupported');
+  const photoPreview = document.getElementById('photoPreview');
+  const capturedCanvas = document.getElementById('capturedPhotoCanvas');
+  const cameraHint = document.getElementById('cameraHint');
+  
+  let faceDetector = null;
+  let detectionActive = false;
+  let correctPositionFrames = 0;
+  const CORRECT_POSITION_THRESHOLD = 30; // frames needed to confirm correct position
+  
+  // Initialize camera when signup form is shown
+  window.initializeCamera = function() {
+    console.log('Camera initialization started...');
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ 
+        video: true,
+        audio: false 
+      })
+      .then(stream => {
+        console.log('Camera stream obtained successfully');
+        cameraVideo.srcObject = stream;
+        cameraVideo.play().then(() => {
+          console.log('Video playback started');
+        }).catch(err => {
+          console.error('Video play failed:', err);
+        });
+        cameraVideo.style.display = 'block';
+        document.getElementById('cameraStartButton').style.display = 'none';
+        document.getElementById('cameraGuideOverlay').style.display = 'block';
+        cameraNotSupported.style.display = 'none';
+        captureBtn.style.display = 'block';
+        
+        // Initialize face detection if available
+        if (typeof ml5 !== 'undefined' && ml5.faceDetection) {
+          try {
+            faceDetector = ml5.faceDetection('cocossd', cameraVideo, modelReady);
+          } catch (err) {
+            console.warn('Face detection not available, camera will work without auto-capture:', err);
+            detectionActive = false;
+            cameraHint.textContent = 'Click "Capture Photo" when ready';
+            cameraHint.style.color = '#667eea';
+          }
+        } else {
+          console.warn('ml5.js not loaded, face detection disabled');
+          detectionActive = false;
+          cameraHint.textContent = 'Click "Capture Photo" when ready';
+          cameraHint.style.color = '#667eea';
+        }
+      })
+      .catch(err => {
+        console.error('Camera access error:', err);
+        cameraVideo.style.display = 'none';
+        document.getElementById('cameraStartButton').style.display = 'flex';
+        cameraNotSupported.style.display = 'flex';
+        captureBtn.style.display = 'none';
+      });
+    } else {
+      console.error('getUserMedia not supported');
+      cameraVideo.style.display = 'none';
+      document.getElementById('cameraStartButton').style.display = 'flex';
+      cameraNotSupported.style.display = 'flex';
+      captureBtn.style.display = 'none';
+    }
+  }
+  
+  function modelReady() {
+    detectionActive = true;
+    detectFace();
+  }
+  
+  function detectFace() {
+    if (!detectionActive || !faceDetector) return;
+    
+    faceDetector.detect(cameraVideo, (err, results) => {
+      if (err) {
+        console.error('Face detection error:', err);
+        correctPositionFrames = 0;
+        cameraHint.textContent = 'Position face in oval frame';
+      } else if (results && results.length > 0) {
+        const detection = results[0];
+        const bbox = detection.bbox;
+        
+        // Get video dimensions
+        const videoWidth = cameraVideo.videoWidth;
+        const videoHeight = cameraVideo.videoHeight;
+        
+        // Normalize bbox to 0-1 range
+        const centerX = (bbox[0] + bbox[2] / 2) / videoWidth;
+        const centerY = (bbox[1] + bbox[3] / 2) / videoHeight;
+        const faceWidth = bbox[2] / videoWidth;
+        const faceHeight = bbox[3] / videoHeight;
+        
+        // Check if face is within guide frame (9:12 aspect ratio, centered)
+        // Guide frame: ellipse centered at 0.5, 0.41, rx=0.35, ry=0.32
+        const frameWidth = 0.35;
+        const frameHeight = 0.32;
+        const frameCenterX = 0.5;
+        const frameCenterY = 0.41;
+        
+        // Check if face center is within ellipse bounds with some tolerance
+        const dx = (centerX - frameCenterX) / frameWidth;
+        const dy = (centerY - frameCenterY) / frameHeight;
+        const ellipseDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Check if face size is appropriate
+        const faceSizeOk = faceWidth > 0.2 && faceWidth < 0.6;
+        const positionOk = ellipseDistance < 0.85;
+        
+        if (positionOk && faceSizeOk) {
+          correctPositionFrames++;
+          if (correctPositionFrames < CORRECT_POSITION_THRESHOLD) {
+            cameraHint.textContent = `✓ Perfect! (${correctPositionFrames}/${CORRECT_POSITION_THRESHOLD})`;
+            cameraHint.style.color = '#10b981';
+          } else {
+            // Auto-capture when positioned correctly
+            capturePhoto();
+            detectionActive = false;
+            return;
+          }
+        } else {
+          correctPositionFrames = 0;
+          if (!positionOk) {
+            cameraHint.textContent = 'Center face in frame';
+          } else if (!faceSizeOk) {
+            if (faceWidth < 0.2) {
+              cameraHint.textContent = 'Move closer to camera';
+            } else {
+              cameraHint.textContent = 'Move farther from camera';
+            }
+          }
+          cameraHint.style.color = '#fbbf24';
+        }
+      } else {
+        correctPositionFrames = 0;
+        cameraHint.textContent = 'No face detected';
+        cameraHint.style.color = '#ef4444';
+      }
+      
+      // Continue detection
+      detectFace();
+    });
+  }
+  
+  function stopFaceDetection() {
+    detectionActive = false;
+  }
+  
+  // Capture photo from camera
+  window.capturePhoto = function() {
+    const canvas = document.createElement('canvas');
+    const size = Math.min(cameraVideo.videoWidth, cameraVideo.videoHeight);
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    
+    // Center crop
+    const offsetX = (cameraVideo.videoWidth - size) / 2;
+    const offsetY = (cameraVideo.videoHeight - size) / 2;
+    ctx.drawImage(cameraVideo, offsetX, offsetY, size, size, 0, 0, size, size);
+    
+    capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.9);
+    
+    // Set canvas display size and draw
+    capturedCanvas.width = size;
+    capturedCanvas.height = size;
+    capturedCanvas.getContext('2d').drawImage(canvas, 0, 0, size, size);
+    
+    // Hide camera, show preview
+    cameraVideo.style.display = 'none';
+    document.getElementById('cameraGuideOverlay').style.display = 'none';
+    photoPreview.style.display = 'flex';
+    captureBtn.style.display = 'none';
+    retakeBtn.style.display = 'block';
+  };
+  
+  // Retake photo
+  window.retakePhoto = function() {
+    capturedPhotoBase64 = null;
+    capturedCanvas.getContext('2d').clearRect(0, 0, capturedCanvas.width, capturedCanvas.height);
+    cameraVideo.style.display = 'block';
+    document.getElementById('cameraGuideOverlay').style.display = 'block';
+    photoPreview.style.display = 'none';
+    captureBtn.style.display = 'block';
+    retakeBtn.style.display = 'none';
+    correctPositionFrames = 0;
+    cameraHint.textContent = 'Position face in oval frame';
+    cameraHint.style.color = '#10b981';
+    detectionActive = true;
+    detectFace();
+  };
+  
+  // Initialize camera when showing signup form
+  const originalShowSignupForm = window.showSignupForm;
+  window.showSignupForm = function() {
+    originalShowSignupForm.call(this);
+    // Camera now starts only when user clicks the button
+  };
+
+  // Signup form submission
+  document.getElementById('signupForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('signupName').value.trim();
+    const birthDate = document.getElementById('signupBirth').value;
+    const contact = document.getElementById('signupContact').value.trim();
+    const city = document.getElementById('signupAddress').value.trim();
+    const gender = document.getElementById('signupGender').value;  // Don't trim dropdown values
+    const civilStatus = document.getElementById('signupCivilStatus').value;
+    const barangay    = document.getElementById('signupBarangay').value.trim();
+    const username = document.getElementById('signupUsername').value.trim().toLowerCase();
+    const password = document.getElementById('signupPassword').value;
+    const confirmPassword = document.getElementById('signupConfirmPassword').value;
+    
+    const msgEl = document.getElementById('signupMsg');
+    const successEl = document.getElementById('signupSuccess');
+    msgEl.textContent = '';
+    msgEl.style.display = 'none';
+    successEl.textContent = '';
+    successEl.style.display = 'none';
+    
+    // Validation
+    if (!name || !birthDate || !contact || !city || !gender || !username || !password || !confirmPassword) {
+      msgEl.textContent = 'All fields are required';
+      msgEl.style.display = 'block';
+      return;
+    }
+    
+    // Photo validation
+    if (!capturedPhotoBase64) {
+      msgEl.textContent = 'Please capture a photo';
+      msgEl.style.display = 'block';
+      return;
+    }
+    
+    // Password match validation
+    if (password !== confirmPassword) {
+      msgEl.textContent = 'Passwords do not match';
+      msgEl.style.display = 'block';
+      return;
+    }
+    
+    // Age validation
+    const age = calculateAge(birthDate);
+    if (age < 60) {
+      msgEl.textContent = 'You must be 60 years or older to register';
+      msgEl.style.display = 'block';
+      return;
+    }
+    
+    // Password strength
+    if (password.length < 4) {
+      msgEl.textContent = 'Password must be at least 4 characters';
+      msgEl.style.display = 'block';
+      return;
+    }
+    
+    // Check if username exists
+    const staff = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
+    const profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
+    const pending = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+    
+    if (staff.some(s => (s.username || '').toLowerCase() === username) || 
+        profiles.some(p => (p.username || '').toLowerCase() === username) ||
+        pending.some(p => (p.username || '').toLowerCase() === username)) {
+      msgEl.textContent = 'Username already exists';
+      msgEl.style.display = 'block';
+      return;
+    }
+    
+    // Create registration with captured photo
+    const newRegistration = {
+      id: generateSeniorId(),
+      name: name,
+      birth: birthDate,
+      age: age,
+      contact: contact,
+      address: city,
+      username: username,
+      password: password,
+      benefits: [],
+      registrationDate: new Date().toISOString(),
+      status: 'pending',
+      gender: gender,
+      civilStatus: civilStatus,
+      barangay: barangay,
+      photo: capturedPhotoBase64
+    };
+    
+    console.log('[signup] Form data collected:', {name, birthDate, contact, city, gender, username}, 'Gender value:', gender);
+    
+    // Upload to Supabase first
+    const submitBtn = this.querySelector('button[type="submit"]') || document.querySelector('#signupForm button');
+    const originalBtnText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting\u2026'; }
+
+    if (window.db) {
+      const result = await window.db.addRegistration(newRegistration);
+      if (!result) {
+        msgEl.textContent = 'Failed to submit registration. Please check your connection and try again.';
+        msgEl.style.display = 'block';
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalBtnText; }
+        return;
+      }
+    }
+
+    // Save to local cache after successful DB upload
+    pending.push(newRegistration);
+    localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalBtnText; }
+
+    // Show success
+    successEl.textContent = 'Registration submitted successfully! Please wait for admin approval.';
+    successEl.style.display = 'block';
+    
+    // Reset form and camera
+    document.getElementById('signupForm').reset();
+    capturedPhotoBase64 = null;
+    document.getElementById('capturedPhotoCanvas').getContext('2d').clearRect(0, 0, 200, 250);
+    document.getElementById('photoPreview').style.display = 'none';
+    
+    // Return to login after 3 seconds
+    setTimeout(() => {
+      showLoginForm();
+    }, 3000);
+  });
+
+  // Store generated OTP
+  let generatedOTP = '';
+  let verifiedUsername = '';
+
+  // Forgot password form submission
+  document.getElementById('forgotPasswordForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('forgotUsername').value.trim();
+    const otpCode = document.getElementById('otpCode').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    const msgEl = document.getElementById('forgotMsg');
+    const successEl = document.getElementById('forgotSuccess');
+    const otpGroup = document.getElementById('otpGroup');
+    const newPassGroup = document.getElementById('newPasswordGroup');
+    const confirmPassGroup = document.getElementById('confirmPasswordGroup');
+    const forgotBtn = document.getElementById('forgotBtn');
+    
+    msgEl.textContent = '';
+    msgEl.style.display = 'none';
+    successEl.textContent = '';
+    successEl.style.display = 'none';
+    
+    if (!username) {
+      msgEl.textContent = 'Please enter your mobile number';
+      msgEl.style.display = 'block';
+      return;
+    }
+    
+    // Step 1: Verify mobile number and send OTP
+    if (otpGroup.style.display === 'none') {
+      // Check if mobile number exists
+      const staff = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
+      const profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
+      
+      const userExists = staff.some(s => s.contact === username) || 
+                        profiles.some(p => p.contact === username);
+      
+      if (!userExists) {
+        msgEl.textContent = 'Mobile number not found';
+        msgEl.style.display = 'block';
+        return;
+      }
+      
+      // Generate 6-digit OTP
+      generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
+      verifiedUsername = username;
+      
+      // Hide username field and show OTP + password fields
+      document.getElementById('forgotUsername').parentElement.style.display = 'none';
+      otpGroup.style.display = 'block';
+      newPassGroup.style.display = 'block';
+      confirmPassGroup.style.display = 'block';
+      document.getElementById('otpDisplay').textContent = 'Demo OTP: ' + generatedOTP;
+      forgotBtn.textContent = 'Reset Password';
+      successEl.textContent = 'Verification code sent! (Displayed above for demo)';
+      successEl.style.display = 'block';
+      
+    } else {
+      // Step 2: Verify OTP and Update password
+      if (!otpCode) {
+        msgEl.textContent = 'Please enter the verification code';
+        msgEl.style.display = 'block';
+        return;
+      }
+      
+      if (otpCode !== generatedOTP) {
+        msgEl.textContent = 'Invalid verification code';
+        msgEl.style.display = 'block';
+        return;
+      }
+      if (!newPassword || !confirmPassword) {
+        msgEl.textContent = 'Please fill in both password fields';
+        msgEl.style.display = 'block';
+        return;
+      }
+      
+      if (newPassword.length < 4) {
+        msgEl.textContent = 'Password must be at least 4 characters';
+        msgEl.style.display = 'block';
+        return;
+      }
+      
+      if (newPassword !== confirmPassword) {
+        msgEl.textContent = 'Passwords do not match';
+        msgEl.style.display = 'block';
+        return;
+      }
+      
+      // Update password in storage using verified mobile number
+      let staff = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
+      let profiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
+      
+      const staffIndex = staff.findIndex(s => s.contact === verifiedUsername);
+      const profileIndex = profiles.findIndex(p => p.contact === verifiedUsername);
+      
+      if (staffIndex !== -1) {
+        staff[staffIndex].password = newPassword;
+        localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
+      } else if (profileIndex !== -1) {
+        profiles[profileIndex].password = newPassword;
+        localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+      }
+      
+      // Show success
+      successEl.textContent = 'Password updated successfully! Redirecting to login...';
+      successEl.style.display = 'block';
+      document.getElementById('forgotPasswordForm').reset();
+      
+      // Return to login after 2 seconds
+      setTimeout(() => {
+        showLoginForm();
+      }, 2000);
+    }
+  });
+
+  // Login form submit — call handleLogin directly so we don't double-fire via loginBtn.click()
+  document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (typeof handleLogin === 'function') {
+      handleLogin();
+    }
+  });
+</script>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.10/dist/umd/supabase.js"></script>
+<script src="assets/supabase-config.js"></script>
+<script src="assets/db.js"></script>
+<script src="assets/script.js"></script>
+
+</body>
+</html>
+
+
+

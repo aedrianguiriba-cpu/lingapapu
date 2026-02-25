@@ -5,7 +5,7 @@ const CACHE_NAME = 'lingapapu-senior-v3';
 
 // Core assets to pre-cache on install
 const PRECACHE = [
-  './senior-mobile.html',
+  './senior-mobile.php',
   './senior-manifest.webmanifest',
   './assets/supabase-config.js',
   './assets/db.js',
@@ -55,7 +55,7 @@ self.addEventListener('fetch', event => {
       }).catch(() => {
         // If offline and no cache — return the app shell for navigation requests
         if (event.request.mode === 'navigate') {
-          return caches.match('./senior-mobile.html');
+          return caches.match('./senior-mobile.php');
         }
       });
     })

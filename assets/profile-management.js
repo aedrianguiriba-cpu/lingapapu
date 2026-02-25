@@ -237,7 +237,7 @@ function closeLogoutModal() {
 
 function confirmLogout() {
   if (window._Session) { window._Session.clear(); } else { sessionStorage.removeItem('lingap_user'); localStorage.removeItem('lingap_session'); }
-  location.href = '/';
+  location.href = 'logout.php';
 }
 
 // Initialize profile when page loads

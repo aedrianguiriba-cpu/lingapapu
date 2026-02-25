@@ -34,13 +34,13 @@ async function initSeniorPortal() {
     // Check if user is logged in
     const sessionRaw = sessionStorage.getItem('currentUser');
     if (!sessionRaw) {
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
         return;
     }
 
     const session = JSON.parse(sessionRaw);
     if (!session.id || session.role !== 'senior') {
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
         return;
     }
 
@@ -58,7 +58,7 @@ async function initSeniorPortal() {
         const profilesRaw = localStorage.getItem(PROFILES_KEY);
         if (!profilesRaw) {
             alert('No profiles found in system. Please contact administrator.');
-            window.location.href = 'index.html';
+            window.location.href = 'index.php';
             return;
         }
         const profilesArr = JSON.parse(profilesRaw);
@@ -67,7 +67,7 @@ async function initSeniorPortal() {
 
     if (!currentUser) {
         alert('Your profile was not found. Please contact administrator.');
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
         return;
     }
 
@@ -149,7 +149,7 @@ function setupEventListeners() {
     document.getElementById('logoutBtn').addEventListener('click', (e) => {
         e.preventDefault();
         if (window._Session) { window._Session.clear(); } else { sessionStorage.removeItem('currentUser'); localStorage.removeItem('lingap_session'); }
-        window.location.href = 'index.html';
+        window.location.href = 'logout.php';
     });
 
     // Update profile form
@@ -470,7 +470,11 @@ function loadProfile() {
     document.getElementById('idCardAge').textContent = `${currentUser.age} years`;
     document.getElementById('idCardContact').textContent = currentUser.contact || 'Not provided';
     document.getElementById('idCardAddress').textContent = currentUser.address || 'Not provided';
-    document.getElementById('idCardRegistered').textContent = formatDate(new Date(currentUser.registrationDate));
+    // Check for registration date in both camelCase and snake_case versions
+    const reg = currentUser.registrationDate || currentUser.dateRegistered || 
+                currentUser.registration_date || currentUser.createdAt || 
+                currentUser.created_at;
+    document.getElementById('idCardRegistered').textContent = reg ? formatDate(new Date(reg)) : 'Not registered';
 
     // Load profile photo
     loadProfilePhoto();
