@@ -1,3 +1,4 @@
+<?php session_start(); ?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,7 +7,7 @@
   <link rel="apple-touch-icon" href="assets/pics/logo.png">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
   <title>LingapApu — Senior</title>
-  <link rel="manifest" href="senior-manifest.webmanifest">
+  <link rel="manifest" href="senior-manifest.php">
   <meta name="theme-color" content="#16a34a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -360,9 +361,257 @@
 
     /* Ripple on nav items */
     .nav-item:active { opacity: .7; }
+
+    /* ── LOGIN SCREEN ── */
+    #loginScreen {
+      position: fixed; inset: 0; z-index: 1000;
+      display: flex; overflow-y: auto;
+      background: #f4f7f6; font-family: 'Inter', system-ui, sans-serif;
+    }
+    #loginScreen.hidden { display: none; }
+    .login-wrapper { display: flex; min-height: 100%; width: 100%; }
+
+    .brand-panel {
+      width: 42%; flex-shrink: 0;
+      background: linear-gradient(160deg, #166534 0%, #22c55e 60%, #4ade80 100%);
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 56px 48px; position: relative; overflow: hidden;
+    }
+    .brand-panel::before {
+      content: ''; position: absolute; width: 360px; height: 360px;
+      background: rgba(255,255,255,0.06); border-radius: 50%; top: -120px; right: -100px;
+    }
+    .brand-panel::after {
+      content: ''; position: absolute; width: 280px; height: 280px;
+      background: rgba(255,255,255,0.05); border-radius: 50%; bottom: -80px; left: -80px;
+    }
+    .brand-logo-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 52px; position: relative; z-index: 2; }
+    .brand-logo-icon {
+      width: 52px; height: 52px; background: rgba(255,255,255,0.2);
+      border: 1.5px solid rgba(255,255,255,0.35); border-radius: 14px;
+      display: flex; align-items: center; justify-content: center; padding: 10px;
+    }
+    .brand-logo-icon img { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1); }
+    .brand-logo-text { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+    .brand-logo-sub { font-size: 11px; color: rgba(255,255,255,0.75); font-weight: 500; letter-spacing: 0.3px; margin-top: 2px; }
+    .brand-headline { font-size: 32px; font-weight: 800; color: #fff; line-height: 1.2; letter-spacing: -0.8px; margin: 0 0 14px; position: relative; z-index: 2; }
+    .brand-tagline { font-size: 15px; color: rgba(255,255,255,0.82); line-height: 1.6; margin: 0 0 44px; font-weight: 400; position: relative; z-index: 2; }
+    .brand-features { display: flex; flex-direction: column; gap: 18px; position: relative; z-index: 2; }
+    .brand-feature { display: flex; align-items: flex-start; gap: 14px; }
+    .brand-feature-icon {
+      width: 38px; height: 38px; background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .brand-feature-text strong { display: block; font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .brand-feature-text span { font-size: 12px; color: rgba(255,255,255,0.72); line-height: 1.5; }
+    .brand-footer { margin-top: 52px; font-size: 12px; color: rgba(255,255,255,0.55); position: relative; z-index: 2; }
+
+    .form-panel {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 40px 24px; overflow-y: auto; background: #f4f7f6;
+    }
+    .login-card {
+      background: #ffffff; border-radius: 16px; padding: 44px 40px;
+      width: 100%; max-width: 440px; border: 1px solid #e5e7eb;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06); animation: loginFadeUp 0.35s ease-out both;
+    }
+    @keyframes loginFadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .card-logo {
+      display: none; width: 48px; height: 48px;
+      background: #22c55e; border-radius: 12px;
+      align-items: center; justify-content: center; padding: 10px; margin: 0 auto 20px;
+    }
+    .card-logo img { width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1); }
+    .login-title { font-size: 26px; font-weight: 800; color: #111827; margin: 0 0 6px; letter-spacing: -0.5px; }
+    .login-subtitle { font-size: 14px; color: #6b7280; margin: 0 0 32px; font-weight: 400; }
+    .login-input-group { position: relative; margin-bottom: 18px; }
+    .login-input-group label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 7px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .login-input {
+      width: 100%; padding: 11px 14px; border: 1.5px solid #e5e7eb;
+      border-radius: 10px; font-size: 14px; background: #f9fafb; color: #111827;
+      font-weight: 500; transition: border-color 0.2s, background 0.2s;
+    }
+    .login-input::placeholder { color: #9ca3af; font-weight: 400; }
+    .login-input:hover { border-color: #d1d5db; background: #fff; }
+    .login-input:focus { outline: none; border-color: #22c55e; background: #fff; box-shadow: 0 0 0 3px rgba(34,197,94,0.12); }
+    .login-btn {
+      width: 100%; padding: 13px; background: #22c55e; color: #fff;
+      border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background 0.2s, transform 0.1s; margin-top: 6px;
+      display: flex; align-items: center; justify-content: center; gap: 8px; letter-spacing: 0.1px;
+    }
+    .login-btn:hover { background: #16a34a; }
+    .login-btn:active { background: #15803d; transform: scale(0.99); }
+    .login-btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+    .login-error {
+      margin-bottom: 16px; padding: 12px 14px; background: #fef2f2;
+      border: 1.5px solid #fca5a5; border-radius: 10px;
+      color: #991b1b; font-size: 13px; font-weight: 600; display: none;
+    }
+    .login-error.show { display: block; }
+    .login-info { font-size: 13px; color: #6b7280; line-height: 1.5; text-align: center; margin-top: 22px; padding-top: 18px; border-top: 1.5px solid #f3f4f6; }
+    .face-login-divider {
+      display: flex; align-items: center; gap: 10px; margin: 14px 0 12px;
+      font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .face-login-divider::before, .face-login-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+    .face-login-btn {
+      width: 100%; padding: 13px; background: #fff; color: #16a34a;
+      border: 2px solid #22c55e; border-radius: 10px; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; margin-bottom: 2px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .face-login-btn:hover { background: #f0fdf4; }
+    .face-login-btn:active { background: #dcfce7; transform: scale(0.99); }
+
+    /* ── Biometric Login Modal ── */
+    #faceLoginModal {
+      display: none; position: fixed; inset: 0; z-index: 99999;
+      background: rgba(0,0,0,0.7); align-items: center; justify-content: center; padding: 20px;
+    }
+    #faceLoginModal.open { display: flex; }
+    .face-modal-card { background: #fff; border-radius: 20px; width: 100%; max-width: 320px; padding: 32px 24px; text-align: center; }
+    .bio-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: #f0fdf4; border: 2px solid #22c55e;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px; animation: bioPulse 1.6s ease-in-out infinite;
+    }
+    @keyframes bioPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      50%       { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
+    }
+    .bio-icon.success { background: #dcfce7; border-color: #16a34a; animation: none; }
+    .bio-icon.error   { background: #fef2f2; border-color: #ef4444; animation: none; }
+    #faceStatusMsg { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 6px; }
+    #faceStatusSub { font-size: 13px; color: #6b7280; margin-bottom: 20px; line-height: 1.5; }
+    #faceCancelBtn { width: 100%; padding: 12px; background: #f3f4f6; color: #374151; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    #faceCancelBtn:hover { background: #e5e7eb; }
+
+    @media (max-width: 860px) {
+      .brand-panel { display: none; }
+      .form-panel { background: #f0fdf4; padding: 28px 16px; align-items: flex-start; padding-top: 40px; }
+      .login-card { padding: 36px 28px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+      .card-logo { display: flex; }
+      .login-title, .login-subtitle { text-align: center; }
+    }
+    @media (max-width: 480px) {
+      .login-card { padding: 28px 20px; border-radius: 14px; }
+      .face-login-btn, .face-login-divider { display: none; }
+    }
   </style>
 </head>
 <body>
+
+<!-- Login Screen -->
+<div id="loginScreen">
+  <div class="login-wrapper">
+
+    <!-- Left brand panel -->
+    <div class="brand-panel">
+      <div class="brand-logo-wrap">
+        <div class="brand-logo-icon">
+          <img src="assets/pics/logo.png" alt="LingapApu">
+        </div>
+        <div>
+          <div class="brand-logo-text">LingapApu</div>
+          <div class="brand-logo-sub">Floridablanca, Pampanga</div>
+        </div>
+      </div>
+      <h2 class="brand-headline">Your benefits,<br>in your hands</h2>
+      <p class="brand-tagline">Access your senior citizen ID, benefits history, and QR code — all from your phone.</p>
+      <div class="brand-features">
+        <div class="brand-feature">
+          <div class="brand-feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div class="brand-feature-text">
+            <strong>Digital Senior ID</strong>
+            <span>Carry your official ID on your phone, always ready</span>
+          </div>
+        </div>
+        <div class="brand-feature">
+          <div class="brand-feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><path d="M13 13h3v3h-3z"/></svg>
+          </div>
+          <div class="brand-feature-text">
+            <strong>QR Merchant Discounts</strong>
+            <span>Scan to verify your 20% senior discount at merchants</span>
+          </div>
+        </div>
+        <div class="brand-feature">
+          <div class="brand-feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div class="brand-feature-text">
+            <strong>Benefits &amp; Transactions</strong>
+            <span>Track all your benefit claims and transaction history</span>
+          </div>
+        </div>
+      </div>
+      <div class="brand-footer">&copy; 2026 LingapApu &mdash; MSWD Floridablanca</div>
+    </div>
+
+    <!-- Right form panel -->
+    <div class="form-panel">
+      <div class="login-card">
+        <div class="card-logo"><img src="assets/pics/logo.png" alt="LingapApu"></div>
+        <h1 class="login-title">Welcome back</h1>
+        <p class="login-subtitle">Sign in to your LingapApu Senior account</p>
+        <div class="login-error" id="loginError"></div>
+        <form id="loginForm" onsubmit="handleMobileLogin(event); return false;">
+          <div class="login-input-group">
+            <label>Username</label>
+            <input type="text" class="login-input" id="loginId" placeholder="Enter your username" autocomplete="username" required>
+          </div>
+          <div class="login-input-group">
+            <label>Password</label>
+            <input type="password" class="login-input" id="loginPass" placeholder="••••••••" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="login-btn" id="mobileLoginBtn">
+            Sign In
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <div class="face-login-divider">or</div>
+          <button type="button" class="face-login-btn" onclick="openFaceLogin()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="8" r="3.5"/>
+              <path d="M6.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/>
+              <circle cx="12" cy="12" r="10" stroke-dasharray="3 2"/>
+            </svg>
+            Sign In with Face
+          </button>
+        </form>
+        <p class="login-info">Enter your username and password to access your senior account</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Biometric Login Modal (WebAuthn) -->
+<div id="faceLoginModal">
+  <div class="face-modal-card">
+    <div class="bio-icon" id="bioIcon">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.8">
+        <path d="M12 3C8.7 3 6 5.7 6 9v2a6 6 0 0 0 12 0V9c0-3.3-2.7-6-6-6z"/>
+        <path d="M9 12c0 1.66 1.34 3 3 3s3-1.34 3-3"/>
+        <line x1="9" y1="9" x2="9.01" y2="9" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="15" y1="9" x2="15.01" y2="9" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div id="faceStatusMsg">Verifying identity...</div>
+    <div id="faceStatusSub">Use your device biometric (face or fingerprint)</div>
+    <button id="faceCancelBtn">Cancel</button>
+  </div>
+</div>
+
+<!-- App Content (Hidden until logged in) -->
+<div id="appContainer" style="display: none; height: 100%;">
 
 <!-- Status bar spacer -->
 <div class="status-bar"></div>
@@ -416,7 +665,7 @@
         <!-- Photo col -->
         <div class="id-photo-col">
           <div class="id-photo-box">
-            <img src="assets/pics/prof.jpg" alt="Photo" id="idCardPhotoImg">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 130'%3E%3Crect fill='%23e5e7eb' width='100' height='130'/%3E%3Ccircle cx='50' cy='30' r='15' fill='%239ca3af'/%3E%3Cellipse cx='50' cy='90' rx='25' ry='20' fill='%239ca3af'/%3E%3C/svg%3E" alt="Photo" id="idCardPhotoImg">
           </div>
           <div class="id-sig-line"><span>Signature</span></div>
         </div>
@@ -749,11 +998,9 @@ document.addEventListener('DOMContentLoaded', () => {
 //  MOBILE SENIOR APP — core JS
 // ═══════════════════════════════════════════════
 
-const PROFILES_KEY     = 'lingap_profiles_v3';
-const TRANSACTIONS_KEY = 'lingap_transactions';
-
-let currentUser = null;
-let txPage      = 1;
+let currentUser  = null;
+let transactions = [];  // loaded from Supabase
+let txPage       = 1;
 const TX_PAGE_SIZE = 10;
 let qrCanvas    = null;   // keep reference for download/share
 
@@ -788,93 +1035,33 @@ function fmtTime(d) {
   if (!d || isNaN(d)) return '';
   return d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
 }
-function getTransactions() {
+async function loadTransactions() {
+  transactions = [];
+  if (!currentUser || !window.db) return;
   try {
-    const all = JSON.parse(localStorage.getItem(TRANSACTIONS_KEY) || '[]');
-    return all
-      .filter(t => t.seniorId === currentUser.id || t.senior_id === currentUser.id)
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  } catch { return []; }
+    const txns = await window.db.getTransactions(currentUser.id);
+    transactions = (txns || []).map(t => ({
+      ...t,
+      seniorId:   t.senior_id   || t.seniorId,
+      seniorName: t.senior_name || t.seniorName,
+      merchantId: t.merchant_id || t.merchantId,
+      scanDate:   t.scan_date   || t.scanDate
+    })).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  } catch(e) {}
+}
+
+function getTransactions() {
+  return transactions;
 }
 
 // ── Init ──────────────────────────────────────
 async function init() {
-  // Sync persisted session from localStorage if sessionStorage is empty (new tab / restart)
-  if (!sessionStorage.getItem('currentUser')) {
-    const _ls = localStorage.getItem('lingap_session');
-    if (_ls) {
-      try {
-        const _e = JSON.parse(_ls);
-        if (_e && _e.role && (!_e.expiry || Date.now() <= _e.expiry)) {
-          sessionStorage.setItem('currentUser', JSON.stringify({ role: _e.role, username: _e.username, id: _e.id }));
-        } else {
-          localStorage.removeItem('lingap_session');
-        }
-      } catch(e) {}
-    }
-  }
-  const sessionRaw = sessionStorage.getItem('currentUser');
-  if (!sessionRaw) { window.location.href = '/'; return; }
-
-  const session = JSON.parse(sessionRaw);
-  if (!session.id || session.role !== 'senior') { window.location.href = '/'; return; }
-
-  // Load from Supabase
-  if (window.db) {
-    try { currentUser = await window.db.getSeniorById(session.id); } catch(e) {}
-  }
-
-  // Fallback to localStorage
-  if (!currentUser) {
-    const raw = localStorage.getItem(PROFILES_KEY);
-    if (raw) {
-      const arr = JSON.parse(raw);
-      currentUser = arr.find(p => p.id === session.id) || null;
-    }
-  }
-
-  if (!currentUser) {
-    alert('Profile not found. Please contact the OSCA office.');
-    window.location.href = '/';
-    return;
-  }
-
-  // Normalise field names
-  currentUser.registrationDate = currentUser.registrationDate || currentUser.registration_date || null;
-
-  // If photo not in Supabase record, fall back to the locally-cached profile (PROFILES_KEY)
-  if (!currentUser.photo) {
-    try {
-      const localProfiles = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]');
-      const localProfile = localProfiles.find(p => p.id === currentUser.id);
-      if (localProfile && localProfile.photo) currentUser.photo = localProfile.photo;
-    } catch(e) {}
-  }
+  // currentUser is already set by login handler or checkMobileLoginState
+  if (!currentUser) return;
 
   // Cache transactions from Supabase — MERGE with local, don't replace
-  if (window.db) {
-    try {
-      const txns = await window.db.getTransactions(currentUser.id);
-      if (txns && txns.length > 0) {
-        const norm = txns.map(t => ({
-          ...t,
-          seniorId:   t.senior_id   || t.seniorId,
-          seniorName: t.senior_name || t.seniorName,
-          merchantId: t.merchant_id || t.merchantId,
-          scanDate:   t.scan_date   || t.scanDate
-        }));
-        // Merge: keep local records that aren't yet in Supabase (e.g. just scanned offline)
-        const local = JSON.parse(localStorage.getItem(TRANSACTIONS_KEY) || '[]');
-        const supaIds = new Set(norm.map(t => t.id));
-        local.forEach(t => {
-          const sid = t.seniorId || t.senior_id;
-          if (!supaIds.has(t.id) && sid === currentUser.id) norm.push(t);
-        });
-        norm.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        localStorage.setItem(TRANSACTIONS_KEY, JSON.stringify(norm));
-      }
-    } catch(e) {}
-  }
+  // Load transactions from Supabase
+  await loadTransactions();
 
   // App bar
   const firstName = (currentUser.name || 'Senior').split(' ')[0];
@@ -1034,8 +1221,6 @@ function generateQR() {
     wrap.appendChild(c);
     qrCanvas = c;
     const dataURL = c.toDataURL();
-    localStorage.setItem(`universal_qr_${currentUser.id}`, dataURL);
-
     if (window.db) {
       window.db.saveQRCode(currentUser.id, dataURL)
         .then(() => { currentUser.qr_code = dataURL; })
@@ -1337,15 +1522,228 @@ function exportToExcel() {
   showToast('Excel file downloaded!', 'success');
 }
 
+// ── Mobile Login ──────────────────────────────
+async function handleMobileLogin(event) {
+  event.preventDefault();
+  const username = document.getElementById('loginId').value.trim();
+  const password = document.getElementById('loginPass').value.trim();
+  const errorEl = document.getElementById('loginError');
+  const btn = document.getElementById('mobileLoginBtn');
+
+  errorEl.classList.remove('show');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+
+  try {
+    // Authenticate against users table via db.login()
+    let user = null;
+    if (window.db) {
+      user = await window.db.login(username, password);
+    }
+
+    if (!user) {
+      errorEl.textContent = 'Invalid username or password.';
+      errorEl.classList.add('show');
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Sign In <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'; }
+      return;
+    }
+
+    if (user.role !== 'senior') {
+      errorEl.textContent = 'This portal is for senior citizens only.';
+      errorEl.classList.add('show');
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Sign In <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'; }
+      return;
+    }
+
+    // Fetch the senior's full profile
+    const seniorId = user.senior_id || user.id;
+    let profile = null;
+    if (window.db) {
+      // 1. Try by senior_id from the users table
+      if (seniorId) profile = await window.db.getSeniorById(seniorId);
+      // 2. Fall back to matching by username in the seniors table
+      if (!profile) profile = await window.db.getSeniorByUsername(username);
+    }
+    if (!profile) {
+      errorEl.textContent = 'Account found but senior profile is missing. Contact the OSCA office.';
+      errorEl.classList.add('show');
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Sign In <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'; }
+      return;
+    }
+  
+  // Login successful - store in sessionStorage, set PHP session, and show app
+  sessionStorage.setItem('mobileSeniorId', profile.id);
+  currentUser = profile;
+  // Persist PHP session
+  try {
+    await fetch('set-session.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'senior', username: username, id: profile.id })
+    });
+  } catch(e) { /* non-fatal */ }
+  
+  // Hide login, show app
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appContainer').style.display = '';
+  
+  // Initialize app
+  renderIDCard();
+  await loadTransactions();
+  renderTransactions();
+  if (typeof QRCode !== 'undefined') generateQR();
+  
+  const firstName = (profile.name || 'Senior').split(' ')[0];
+  document.getElementById('appBarSub').textContent = `Hi, ${firstName}! · ID: ${profile.id}`;
+  } catch(e) {
+    errorEl.textContent = 'Login error: ' + (e.message || 'Unknown error occurred');
+    errorEl.classList.add('show');
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Sign In <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>'; }
+  }
+}
+
+// Check if already logged in on page load
+async function checkMobileLoginState() {
+  const mobileId = sessionStorage.getItem('mobileSeniorId');
+  if (!mobileId) return;
+
+  let profile = null;
+  if (window.db) {
+    try { profile = await window.db.getSeniorById(mobileId); } catch(e) { profile = null; }
+  }
+  if (profile) {
+    currentUser = profile;
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('appContainer').style.display = '';
+    renderIDCard();
+    await loadTransactions();
+    renderTransactions();
+    if (typeof QRCode !== 'undefined') generateQR();
+    const firstName = (profile.name || 'Senior').split(' ')[0];
+    document.getElementById('appBarSub').textContent = `Hi, ${firstName}! · ID: ${profile.id}`;
+  } else {
+    // Session ID no longer valid — clear it and show login
+    sessionStorage.removeItem('mobileSeniorId');
+  }
+}
+
 // ── Logout ────────────────────────────────────
 document.getElementById('logoutBtn').addEventListener('click', () => {
-  sessionStorage.removeItem('currentUser');
-  localStorage.removeItem('lingap_session');
-  window.location.href = '/';
+  sessionStorage.removeItem('mobileSeniorId');
+  currentUser = null;
+  window.location.href = 'logout.php';
+});
+
+// ── Biometric Login (WebAuthn) ──────────────────────────────────────────────
+
+function _bufferToBase64url(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+function _base64urlToBuffer(b64) {
+  const b64pad = b64.replace(/-/g,'+').replace(/_/g,'/').padEnd(b64.length + (4 - b64.length%4)%4, '=');
+  const bin = atob(b64pad);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+function _setBioState(state) {
+  const icon = document.getElementById('bioIcon');
+  const msg  = document.getElementById('faceStatusMsg');
+  const sub  = document.getElementById('faceStatusSub');
+  if (!icon) return;
+  icon.className = 'bio-icon' + (state ? ' ' + state : '');
+  if (state === 'success') {
+    msg.textContent = '✓ Identity verified!';
+    msg.style.color = '#16a34a';
+    sub.textContent = 'Logging you in...';
+  } else if (state === 'error') {
+    msg.style.color = '#dc2626';
+  } else {
+    msg.textContent = 'Verifying identity...';
+    msg.style.color = '#111827';
+    sub.textContent = 'Approve the biometric prompt on your device';
+  }
+}
+
+function _showBioModal(state, msgText, subText) {
+  document.getElementById('faceLoginModal').classList.add('open');
+  const msg = document.getElementById('faceStatusMsg');
+  const sub = document.getElementById('faceStatusSub');
+  msg.textContent = msgText || 'Loading...';
+  sub.textContent = subText || '';
+  _setBioState(state);
+}
+
+function closeFaceLogin() {
+  document.getElementById('faceLoginModal').classList.remove('open');
+}
+
+async function openFaceLogin() {
+  if (!window.PublicKeyCredential) {
+    const m = document.getElementById('loginError');
+    m.textContent = 'Biometric login is not supported on this browser.';
+    m.classList.add('show');
+    return;
+  }
+  const creds = JSON.parse(localStorage.getItem(WEBAUTHN_CREDS_KEY) || '{}');
+  const credKeys = Object.keys(creds);
+  if (credKeys.length === 0) {
+    _showBioModal('error', 'No biometric registered',
+      'Log in with your password first, then tap "Register Biometric" in the app to set it up.');
+    return;
+  }
+  _showBioModal('', 'Verifying identity...', 'Approve the biometric prompt on your device');
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const allowCredentials = credKeys.map(id => ({ id: _base64urlToBuffer(id), type: 'public-key' }));
+    const assertion = await navigator.credentials.get({
+      publicKey: { challenge, allowCredentials, userVerification: 'required', timeout: 60000 }
+    });
+    const credId = _bufferToBase64url(assertion.rawId);
+    const seniorId = creds[credId];
+    if (!seniorId) {
+      _showBioModal('error', 'Not recognized', 'Re-register your biometric in the app and try again.');
+      return;
+    }
+    _setBioState('success');
+    // Auto-login
+    try {
+      let profile = null;
+      if (window.db) profile = await window.db.getSeniorById(seniorId);
+      if (!profile && window.db) profile = await window.db.getSeniorByUsername(seniorId);
+      if (!profile) { _showBioModal('error', 'Profile not found', 'Please use password login.'); return; }
+      currentUser = profile;
+      sessionStorage.setItem('mobileSeniorId', profile.id);
+      document.getElementById('loginScreen').classList.add('hidden');
+      document.getElementById('appContainer').style.display = '';
+      renderIDCard();
+      await loadTransactions();
+      renderTransactions();
+      if (typeof QRCode !== 'undefined') generateQR();
+      const firstName = (profile.name || 'Senior').split(' ')[0];
+      document.getElementById('appBarSub').textContent = `Hi, ${firstName}! · ID: ${profile.id}`;
+    } catch(e) { _showBioModal('error', 'Login error', 'Please use password login.'); }
+  } catch(e) {
+    if (e.name === 'NotAllowedError') {
+      _showBioModal('error', 'Cancelled', 'Biometric verification was cancelled.');
+    } else {
+      _showBioModal('error', 'Error', e.message);
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('faceCancelBtn')?.addEventListener('click', closeFaceLogin);
 });
 
 // ── Boot ──────────────────────────────────────
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  checkMobileLoginState();
+  if (currentUser) {
+    init();
+  }
+});
 </script>
 </body>
 </html>

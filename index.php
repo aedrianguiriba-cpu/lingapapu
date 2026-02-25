@@ -1,9 +1,19 @@
+<?php
+session_start();
+// If already logged in, redirect to the right portal
+if (!empty($_SESSION['role'])) {
+    $map = ['senior'=>'senior.php','merchant'=>'merchant.php','osca'=>'osca.php','admin'=>'admin.php'];
+    $dest = $map[$_SESSION['role']] ?? 'index.php';
+    header('Location: ' . $dest);
+    exit;
+}
+?>
 <!doctype html>
 <html lang="en">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>LingapApu — Login</title>
 <link rel="icon" type="image/png" href="assets/pics/logo.png">
 <link rel="apple-touch-icon" href="assets/pics/logo.png">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.php">
 <meta name="theme-color" content="#22c55e">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -378,71 +388,8 @@
     .login-title, .form-title { text-align: center; }
     .login-subtitle, .form-subtitle { text-align: center; }
     .auth-links { flex-direction: column; gap: 10px; text-align: center; }
-    .face-login-btn, .face-login-divider { display: none; }
-  }
-  @media (max-width: 480px) {
     .login-card { padding: 28px 20px; border-radius: 14px; }
   }
-
-  /* ── Biometric Login Button ── */
-  .face-login-divider {
-    display: flex; align-items: center; gap: 10px;
-    margin: 14px 0 12px;
-    font-size: 11px; font-weight: 700; color: #9ca3af;
-    text-transform: uppercase; letter-spacing: 0.5px;
-  }
-  .face-login-divider::before, .face-login-divider::after {
-    content: ''; flex: 1; height: 1px; background: #e5e7eb;
-  }
-  .face-login-btn {
-    width: 100%; padding: 13px;
-    background: #fff; color: #16a34a;
-    border: 2px solid #22c55e; border-radius: 10px;
-    font-size: 15px; font-weight: 700; cursor: pointer;
-    transition: all 0.2s; margin-bottom: 2px;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-  }
-  .face-login-btn:hover { background: #f0fdf4; }
-  .face-login-btn:active { background: #dcfce7; transform: scale(0.99); }
-
-  /* ── Biometric Status Modal ── */
-  #faceLoginModal {
-    display: none; position: fixed; inset: 0; z-index: 99999;
-    background: rgba(0,0,0,0.7);
-    align-items: center; justify-content: center; padding: 20px;
-  }
-  #faceLoginModal.open { display: flex; }
-  .face-modal-card {
-    background: #fff; border-radius: 20px;
-    width: 100%; max-width: 320px; padding: 32px 24px;
-    text-align: center;
-  }
-  .bio-icon {
-    width: 72px; height: 72px; border-radius: 50%;
-    background: #f0fdf4; border: 2px solid #22c55e;
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 16px;
-    animation: bioPulse 1.6s ease-in-out infinite;
-  }
-  @keyframes bioPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
-    50%       { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
-  }
-  .bio-icon.success { background: #dcfce7; border-color: #16a34a; animation: none; }
-  .bio-icon.error   { background: #fef2f2; border-color: #ef4444; animation: none; }
-  #faceStatusMsg {
-    font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 6px;
-  }
-  #faceStatusSub {
-    font-size: 13px; color: #6b7280; margin-bottom: 20px; line-height: 1.5;
-  }
-  #faceCancelBtn {
-    width: 100%; padding: 12px;
-    background: #f3f4f6; color: #374151;
-    border: none; border-radius: 12px;
-    font-size: 14px; font-weight: 600; cursor: pointer;
-  }
-  #faceCancelBtn:hover { background: #e5e7eb; }
 </style><!--ORPHAN_CSS_REMOVED
   .login-container::after {
     content: '';
@@ -1147,16 +1094,6 @@ ORPHAN_CSS_REMOVED-->
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
 
-      <div class="face-login-divider">or</div>
-      <button type="button" class="face-login-btn" onclick="openFaceLogin()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="8" r="3.5"/>
-          <path d="M6.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/>
-          <circle cx="12" cy="12" r="10" stroke-dasharray="3 2"/>
-        </svg>
-        Sign In with Face
-      </button>
-      
       <div id="loginMsg" style="display: none;"></div>
       
       <div class="auth-links">
@@ -2021,131 +1958,6 @@ ORPHAN_CSS_REMOVED-->
 <script src="assets/supabase-config.js"></script>
 <script src="assets/db.js"></script>
 <script src="assets/script.js"></script>
-
-<!-- Biometric Login Modal (WebAuthn) -->
-<div id="faceLoginModal">
-  <div class="face-modal-card">
-    <div class="bio-icon" id="bioIcon">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="1.8">
-        <path d="M12 3C8.7 3 6 5.7 6 9v2a6 6 0 0 0 12 0V9c0-3.3-2.7-6-6-6z"/>
-        <path d="M9 12c0 1.66 1.34 3 3 3s3-1.34 3-3"/>
-        <line x1="9" y1="9" x2="9.01" y2="9" stroke-width="2.5" stroke-linecap="round"/>
-        <line x1="15" y1="9" x2="15.01" y2="9" stroke-width="2.5" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <div id="faceStatusMsg">Verifying identity...</div>
-    <div id="faceStatusSub">Use your device biometric (face or fingerprint)</div>
-    <button id="faceCancelBtn">Cancel</button>
-  </div>
-</div>
-
-<script>
-// ── Biometric Login (WebAuthn) ──────────────────────────────────────────────
-const WEBAUTHN_CREDS_KEY = 'lingap_webauthn_creds';
-
-function _bufferToBase64url(buffer) {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-}
-function _base64urlToBuffer(b64) {
-  const b64pad = b64.replace(/-/g,'+').replace(/_/g,'/').padEnd(b64.length + (4 - b64.length%4)%4, '=');
-  const bin = atob(b64pad);
-  const buf = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-  return buf.buffer;
-}
-
-function _setBioState(state) {
-  const icon = document.getElementById('bioIcon');
-  const msg  = document.getElementById('faceStatusMsg');
-  const sub  = document.getElementById('faceStatusSub');
-  if (!icon) return;
-  icon.className = 'bio-icon' + (state ? ' ' + state : '');
-  if (state === 'success') {
-    msg.textContent = '\u2713 Identity verified!';
-    msg.style.color = '#16a34a';
-    sub.textContent = 'Logging you in...';
-  } else if (state === 'error') {
-    msg.style.color = '#dc2626';
-  } else {
-    msg.textContent = 'Verifying identity...';
-    msg.style.color = '#111827';
-    sub.textContent = 'Approve the biometric prompt on your device';
-  }
-}
-
-function _showBioModal(state, msgText, subText) {
-  document.getElementById('faceLoginModal').classList.add('open');
-  const msg = document.getElementById('faceStatusMsg');
-  const sub = document.getElementById('faceStatusSub');
-  _setBioState(state);
-  if (msgText) { msg.textContent = msgText; msg.style.color = state==='error' ? '#dc2626' : state==='success' ? '#16a34a' : '#6b7280'; }
-  if (subText)   sub.textContent = subText;
-}
-
-function closeFaceLogin() {
-  document.getElementById('faceLoginModal').classList.remove('open');
-}
-
-async function openFaceLogin() {
-  if (!window.PublicKeyCredential) {
-    const m = document.getElementById('loginMsg');
-    m.textContent = 'Biometric login is not supported on this browser.';
-    m.className = 'error-msg'; m.style.display = 'block';
-    return;
-  }
-  const creds = JSON.parse(localStorage.getItem(WEBAUTHN_CREDS_KEY) || '{}');
-  const credKeys = Object.keys(creds);
-  if (credKeys.length === 0) {
-    _showBioModal('error', 'No biometric registered',
-      'Log in with your password first, then tap \u201cRegister Biometric\u201d in the app to set it up.');
-    return;
-  }
-  _showBioModal('', 'Verifying identity...', 'Approve the biometric prompt on your device');
-  try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const allowCredentials = credKeys.map(id => ({ id: _base64urlToBuffer(id), type: 'public-key' }));
-    const assertion = await navigator.credentials.get({
-      publicKey: { challenge, allowCredentials, userVerification: 'required', timeout: 60000 }
-    });
-    const credId = _bufferToBase64url(assertion.rawId);
-    const seniorId = creds[credId];
-    if (!seniorId) {
-      _showBioModal('error', 'Not recognized', 'Re-register your biometric in the app and try again.');
-      return;
-    }
-    _setBioState('success');
-    // Auto-login
-    try {
-      let senior = null;
-      if (window.db) senior = await window.db.getSeniorById(seniorId);
-      if (!senior) {
-        const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
-        senior = profiles.find(p => p.id === seniorId) || null;
-      }
-      if (!senior) { _showBioModal('error', 'Profile not found', 'Use password login.'); return; }
-      // WebAuthn login always uses remember=false (biometric handles future auth itself)
-      if (window._Session) {
-        window._Session.set({ role:'senior', username: senior.username, id: senior.id }, false);
-      } else {
-        sessionStorage.setItem('currentUser', JSON.stringify({ role:'senior', username: senior.username, id: senior.id }));
-      }
-      setTimeout(() => { window.location.href = 'senior.html'; }, 800);
-    } catch(e) { _showBioModal('error', 'Login error', 'Please use password login.'); }
-  } catch(e) {
-    if (e.name === 'NotAllowedError') {
-      _showBioModal('error', 'Cancelled', 'Biometric verification was cancelled.');
-    } else {
-      _showBioModal('error', 'Error', e.message);
-    }
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('faceCancelBtn')?.addEventListener('click', closeFaceLogin);
-});
-</script>
-
 
 </body>
 </html>

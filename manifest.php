@@ -1,5 +1,8 @@
-{
-  "name": "LingapApu — Senior Citizen Portal",
+<?php
+header('Content-Type: application/manifest+json; charset=utf-8');
+header('Cache-Control: public, max-age=604800');
+echo '{
+  "name": "LingapApu \u2014 Senior Citizen Portal",
   "short_name": "LingapApu",
   "description": "Senior Citizen Management System for Floridablanca, Pampanga",
   "start_url": "./index.php",
@@ -70,4 +73,4 @@
       "icons": [{ "src": "assets/pics/logo.png", "sizes": "96x96" }]
     }
   ]
-}
+}';

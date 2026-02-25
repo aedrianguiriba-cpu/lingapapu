@@ -1,3 +1,10 @@
+<?php
+session_start();
+if (empty($_SESSION['role']) || $_SESSION['role'] !== 'senior') {
+    header('Location: index.php');
+    exit;
+}
+?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,7 +13,7 @@
     <link rel="apple-touch-icon" href="assets/pics/logo.png">
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>LingapApu — Senior Citizen Portal</title>
-    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="manifest" href="manifest.php">
     <meta name="theme-color" content="#22c55e">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">

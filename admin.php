@@ -1,9 +1,17 @@
+<?php
+session_start();
+if (empty($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header('Location: index.php');
+    exit;
+}
+?>
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
     <link rel="icon" type="image/png" href="assets/pics/logo.png">
     <link rel="apple-touch-icon" href="assets/pics/logo.png">
+    <link rel="manifest" href="manifest.php">
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>LingapApu — Admin</title>
     <link rel="stylesheet" href="assets/style.css">
@@ -15,7 +23,7 @@
         // Initialize scanner when page loads
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM Content Loaded - Admin');
-            if (window.location.pathname.includes('admin.html')) {
+            if (window.location.pathname.includes('admin.php')) {
                 new ScannerUI();
             }
         });
@@ -201,10 +209,9 @@
           updateDashClock();
           setInterval(updateDashClock, 1000);
           document.addEventListener('DOMContentLoaded', function() {
-            const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
             const nameEl = document.getElementById('dashAdminName');
-            if (nameEl && session.username) {
-              nameEl.textContent = session.username.charAt(0).toUpperCase() + session.username.slice(1);
+            if (nameEl) {
+              nameEl.textContent = 'Admin';
             }
           });
         })();

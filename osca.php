@@ -1,9 +1,17 @@
+<?php
+session_start();
+if (empty($_SESSION['role']) || $_SESSION['role'] !== 'osca') {
+    header('Location: index.php');
+    exit;
+}
+?>
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
     <link rel="icon" type="image/png" href="assets/pics/logo.png">
     <link rel="apple-touch-icon" href="assets/pics/logo.png">
+    <link rel="manifest" href="manifest.php">
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>LingapApu — OSCA/MSWD Staff</title>
     <link rel="stylesheet" href="assets/style.css">
@@ -751,11 +759,7 @@
 </footer>
 
 <script>
-// Check authentication
-const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-if (!session.role || session.role !== 'osca') {
-    window.location.href = '/';
-}
+// Session check removed
 
 // OSCA Portal Logic
 let videoStreamOSCA = null;
@@ -782,8 +786,7 @@ function initOSCAPortal() {
 }
 
 function loadOSCAProfile() {
-    const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-    const username = session.username || 'osca';
+    const username = 'osca';
     const initials = username.substring(0, 2).toUpperCase();
     
     document.getElementById('oscaProfileInitials').textContent = initials;
@@ -1332,7 +1335,7 @@ function logTransaction() {
         date: date,
         notes: notes,
         timestamp: new Date().toISOString(),
-        staff: JSON.parse(sessionStorage.getItem('currentUser') || '{}').username
+        staff: 'osca'
     };
     
     // Save to transactions storage
@@ -1551,8 +1554,7 @@ async function updateEligibilityDecision(seniorId, decision, age) {
             }).catch(e => console.error('[eligibility] updateSenior failed:', e));
 
             // 2. Write individual rows to the user_benefits table
-            const oscaSession = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-            const assignedBy  = oscaSession.username || oscaSession.id || 'osca';
+            const assignedBy  = 'osca';
             window.db.addUserBenefits(seniorId, benefitNames, assignedBy).then(rows => {
                 if (rows) {
                     console.log('[eligibility] user_benefits rows saved:', rows.length, 'for', seniorId);
@@ -1863,8 +1865,7 @@ function getBirthdayIncentiveAmount(age) {
 
 // Logout
 document.getElementById('logoutBtnOSCA').addEventListener('click', () => {
-    if (window._Session) { window._Session.clear(); } else { sessionStorage.removeItem('currentUser'); localStorage.removeItem('lingap_session'); }
-    window.location.href = '/';
+    window.location.href = 'logout.php';
 });
 </script>
 <script src="assets/age-benefits-management.js"></script>

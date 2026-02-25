@@ -48,7 +48,7 @@ script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https:/
 style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
 font-src 'self' https://fonts.gstatic.com; \
 img-src 'self' data: blob: https:; \
-connect-src 'self' https://*.supabase.co wss://*.supabase.co; \
+connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cdn.jsdelivr.net https://unpkg.com; \
 frame-src 'none'; \
 object-src 'none'; \
 base-uri 'self'; \
@@ -64,6 +64,12 @@ form-action 'self'"
   Order allow,deny
   Deny from all
 </FilesMatch>
+
+# ── MIME Types ───────────────────────────────────────────────
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType application/javascript     .js
+</IfModule>
 
 # ── Cache static assets ───────────────────────────────────────
 <IfModule mod_expires.c>

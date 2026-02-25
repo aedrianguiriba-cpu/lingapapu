@@ -1,9 +1,17 @@
+<?php
+session_start();
+if (empty($_SESSION['role']) || $_SESSION['role'] !== 'merchant') {
+    header('Location: index.php');
+    exit;
+}
+?>
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
     <link rel="icon" type="image/png" href="assets/pics/logo.png">
     <link rel="apple-touch-icon" href="assets/pics/logo.png">
+    <link rel="manifest" href="manifest.php">
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>LingapApu — Merchant Portal</title>
     <link rel="stylesheet" href="assets/style.css">
@@ -555,11 +563,7 @@
 </footer>
 
 <script>
-// Check authentication
-const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-if (!session.role || session.role !== 'merchant') {
-    window.location.href = '/';
-}
+// Session check removed
 
 // Merchant Portal Logic
 let html5QrCode;
@@ -576,18 +580,16 @@ function initMerchantPortal() {
 }
 
 function loadMerchantProfile() {
-    // Get session to identify merchant
-    const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-    
     // Load or create merchant profile
     const allMerchants = JSON.parse(localStorage.getItem('merchantProfiles') || '{}');
     
-    if (allMerchants[session.username]) {
-        merchantData = allMerchants[session.username];
+    const username = 'merchant';
+    if (allMerchants[username]) {
+        merchantData = allMerchants[username];
     } else {
         // Create default merchant profile
         merchantData = {
-            id: 'MERCH-' + session.username.toUpperCase(),
+            id: 'MERCH-' + username.toUpperCase(),
             username: session.username,
             name: session.username === 'merchant' ? 'Sample Store' : session.username + ' Store',
             type: 'grocery',
@@ -664,8 +666,7 @@ function setupEventListeners() {
     document.getElementById('saveMerchantProfileBtn').addEventListener('click', saveMerchantProfile);
     document.getElementById('logoutMerchantBtn').addEventListener('click', () => {
         if (confirm('Are you sure you want to logout?')) {
-            if (window._Session) { window._Session.clear(); } else { sessionStorage.removeItem('currentUser'); localStorage.removeItem('lingap_session'); }
-            window.location.href = '/';
+            window.location.href = 'logout.php';
         }
     });
     
@@ -1237,11 +1238,9 @@ async function loadMerchantTransactions() {
 }
 
 function saveMerchantProfile() {
-    const session = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-    
     merchantData = {
         id: merchantData.id,
-        username: session.username,
+        username: 'merchant',
         name: document.getElementById('merchantName').value,
         type: document.getElementById('merchantType').value,
         contact: document.getElementById('merchantContact').value,
