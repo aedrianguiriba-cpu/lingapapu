@@ -902,23 +902,35 @@ function processQRCode(decodedText) {
     }
 }
 
-function validateAndAutoProcess(seniorId) {
+async function validateAndAutoProcess(seniorId) {
     console.log('Validating senior ID:', seniorId);
     
-    // Get profiles from the correct storage key
-    const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
-    console.log('Profiles found:', profiles.length);
+    let senior = null;
     
-    // Find by 'id' property (not 'seniorId')
-    const senior = profiles.find(p => p.id === seniorId);
-    console.log('Senior found:', senior);
+    // Try to fetch from Supabase first
+    if (window.db) {
+        try {
+            senior = await window.db.getSeniorById(seniorId);
+            console.log('Senior fetched from Supabase:', senior);
+        } catch (e) {
+            console.warn('Supabase fetch failed, trying localStorage:', e);
+        }
+    }
+    
+    // Fall back to localStorage if Supabase didn't return data
+    if (!senior) {
+        const profiles = JSON.parse(localStorage.getItem('lingap_profiles_v3') || '[]');
+        console.log('Profiles found in localStorage:', profiles.length);
+        senior = profiles.find(p => p.id === seniorId);
+        console.log('Senior found in localStorage:', senior);
+    }
     
     if (!senior) {
-        showAlert('Senior citizen not found in database', 'error');
+        showAlert('Senior citizen not found in database. Please ensure the QR code is valid.', 'error');
         document.getElementById('qr-reader').innerHTML += `
             <div style="padding:20px;text-align:center;color:#ef4444">
                 <p>Senior ID: ${seniorId} not found</p>
-                <p style="font-size:12px;margin-top:8px">Please ensure the QR code is valid</p>
+                <p style="font-size:12px;margin-top:8px">Please verify the QR code is from an active senior</p>
             </div>
         `;
         return;
