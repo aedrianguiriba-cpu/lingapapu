@@ -11,6 +11,7 @@ if (empty($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     <meta charset="utf-8"/>
     <link rel="icon" type="image/png" href="assets/pics/logo.png">
     <link rel="apple-touch-icon" href="assets/pics/logo.png">
+    <link rel="manifest" href="manifest.php">
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>LingapApu — Admin</title>
     <link rel="stylesheet" href="assets/style.css">

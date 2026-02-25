@@ -1,0 +1,76 @@
+<?php
+header('Content-Type: application/manifest+json; charset=utf-8');
+header('Cache-Control: public, max-age=604800');
+echo '{
+  "name": "LingapApu \u2014 Senior Citizen Portal",
+  "short_name": "LingapApu",
+  "description": "Senior Citizen Management System for Floridablanca, Pampanga",
+  "start_url": "./index.php",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#22c55e",
+  "background_color": "#ffffff",
+  "lang": "en",
+  "categories": ["government", "health", "lifestyle"],
+  "icons": [
+    {
+      "src": "assets/pics/logo.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pics/logo.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pics/logo.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pics/logo.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pics/logo.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pics/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pics/logo.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pics/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Senior Portal",
+      "short_name": "My Portal",
+      "description": "Go to senior citizen portal",
+      "url": "./senior",
+      "icons": [{ "src": "assets/pics/logo.png", "sizes": "96x96" }]
+    }
+  ]
+}';

@@ -7,7 +7,7 @@
   <link rel="apple-touch-icon" href="assets/pics/logo.png">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
   <title>LingapApu — Senior</title>
-  <link rel="manifest" href="senior-manifest.webmanifest">
+  <link rel="manifest" href="senior-manifest.php">
   <meta name="theme-color" content="#16a34a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -577,7 +577,11 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
           <div class="face-login-divider">or</div>
+<<<<<<< HEAD
           <button type="button" class="face-login-btn" id="faceLoginBtn" onclick="openFaceLogin()">
+=======
+          <button type="button" class="face-login-btn" onclick="openFaceLogin()">
+>>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="8" r="3.5"/>
               <path d="M6.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/>
@@ -585,7 +589,10 @@
             </svg>
             Sign In with Face
           </button>
+<<<<<<< HEAD
           <div id="bioUnsupportedMsg" style="display:none;margin-top:12px;padding:12px;background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;font-size:12px;color:#92400e;text-align:center">📱 Biometric login not available on this device. Use your password above.</div>
+=======
+>>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
         </form>
         <p class="login-info">Enter your username and password to access your senior account</p>
       </div>
@@ -1659,6 +1666,7 @@ async function checkMobileLoginState() {
   }
 }
 
+<<<<<<< HEAD
 // Check biometric support on page load
 function initBiometricSupport() {
   const bioBtn = document.getElementById('faceLoginBtn');
@@ -1683,6 +1691,14 @@ if (document.readyState === 'loading') {
 } else {
   initBiometricSupport();
 }
+=======
+// ── Logout ────────────────────────────────────
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('mobileSeniorId');
+  currentUser = null;
+  window.location.href = 'logout.php';
+});
+>>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
 
 // ── Biometric Login (WebAuthn) ──────────────────────────────────────────────
 
@@ -1733,6 +1749,7 @@ function closeFaceLogin() {
 async function openFaceLogin() {
   if (!window.PublicKeyCredential) {
     const m = document.getElementById('loginError');
+<<<<<<< HEAD
     m.textContent = '📱 Biometric login is not supported on this device. Please use your username and password above.';
     m.classList.add('show');
     return;
@@ -1753,6 +1770,12 @@ async function openFaceLogin() {
     return;
   }
   
+=======
+    m.textContent = 'Biometric login is not supported on this browser.';
+    m.classList.add('show');
+    return;
+  }
+>>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
   const creds = JSON.parse(localStorage.getItem(WEBAUTHN_CREDS_KEY) || '{}');
   const credKeys = Object.keys(creds);
   if (credKeys.length === 0) {
@@ -1789,6 +1812,7 @@ async function openFaceLogin() {
       renderTransactions();
       if (typeof QRCode !== 'undefined') generateQR();
       const firstName = (profile.name || 'Senior').split(' ')[0];
+<<<<<<< HEAD
       showToast('Welcome back, ' + firstName + '!', 'success');
     } catch (e) {
       console.error('Profile fetch failed:', e);
@@ -1801,12 +1825,22 @@ async function openFaceLogin() {
       _showBioModal('error', 'Not supported', 'Your device does not support biometric authentication. Use your password.');
     } else {
       _showBioModal('error', 'Authentication failed', e.message || 'Please try again or use password login.');
+=======
+      document.getElementById('appBarSub').textContent = `Hi, ${firstName}! · ID: ${profile.id}`;
+    } catch(e) { _showBioModal('error', 'Login error', 'Please use password login.'); }
+  } catch(e) {
+    if (e.name === 'NotAllowedError') {
+      _showBioModal('error', 'Cancelled', 'Biometric verification was cancelled.');
+    } else {
+      _showBioModal('error', 'Error', e.message);
+>>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
     }
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('faceCancelBtn')?.addEventListener('click', closeFaceLogin);
+<<<<<<< HEAD
   
   // Logout handler
   const logoutBtn = document.getElementById('logoutBtn');
@@ -1820,6 +1854,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initialize biometric support check
   initBiometricSupport();
+=======
+>>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
 });
 
 // ── Boot ──────────────────────────────────────

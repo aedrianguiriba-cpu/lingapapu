@@ -2,6 +2,7 @@
 session_start();
 // If already logged in, redirect to the right portal
 if (!empty($_SESSION['role'])) {
+<<<<<<< HEAD
     $isMobile = preg_match('/Android|iPhone|iPad|iPod|Mobile|mobile/i', $_SERVER['HTTP_USER_AGENT'] ?? '') || (isset($_SERVER['HTTP_WIDTH']) && $_SERVER['HTTP_WIDTH'] < 768);
     $map = [
         'senior' => ($isMobile ? 'senior-mobile.php' : 'senior.php'),
@@ -9,6 +10,9 @@ if (!empty($_SESSION['role'])) {
         'osca' => 'osca.php',
         'admin' => 'admin.php'
     ];
+=======
+    $map = ['senior'=>'senior.php','merchant'=>'merchant.php','osca'=>'osca.php','admin'=>'admin.php'];
+>>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
     $dest = $map[$_SESSION['role']] ?? 'index.php';
     header('Location: ' . $dest);
     exit;
@@ -19,7 +23,7 @@ if (!empty($_SESSION['role'])) {
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>LingapApu — Login</title>
 <link rel="icon" type="image/png" href="assets/pics/logo.png">
 <link rel="apple-touch-icon" href="assets/pics/logo.png">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.php">
 <meta name="theme-color" content="#22c55e">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">

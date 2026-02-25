@@ -65,6 +65,12 @@ form-action 'self'"
   Deny from all
 </FilesMatch>
 
+# ── MIME Types ───────────────────────────────────────────────
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType application/javascript     .js
+</IfModule>
+
 # ── Cache static assets ───────────────────────────────────────
 <IfModule mod_expires.c>
   ExpiresActive On

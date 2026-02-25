@@ -1,12 +1,16 @@
 // LingapApu Senior PWA — Service Worker
 // Caches all static assets for offline use
 
-const CACHE_NAME = 'lingapapu-senior-v3';
+const CACHE_NAME = 'lingapapu-senior-v4';
 
 // Core assets to pre-cache on install
 const PRECACHE = [
   './senior-mobile.php',
+<<<<<<< HEAD
   './senior-manifest.webmanifest',
+=======
+  './senior-manifest.php',
+>>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
   './assets/supabase-config.js',
   './assets/db.js',
   './assets/style.css',
@@ -57,6 +61,8 @@ self.addEventListener('fetch', event => {
         if (event.request.mode === 'navigate') {
           return caches.match('./senior-mobile.php');
         }
+        // For non-navigation requests (scripts, etc.) return a network error response
+        return new Response('', { status: 503, statusText: 'Service Unavailable' });
       });
     })
   );
