@@ -1144,32 +1144,28 @@ function initLogin(){
   sessionStorage.removeItem('currentUser');
   sessionStorage.removeItem('lingap_user');
 
-  // Only auto-redirect if a *persistent* (Remember Me) session exists in localStorage.
-  // Do NOT rely on sessionStorage here — it may be stale if a page's logout
-  // failed to clear it before redirecting.
-  const ls = localStorage.getItem(LINGAP_SESSION_KEY);
-  if (ls) {
-    try {
-      const entry = JSON.parse(ls);
-      if (entry && entry.role && (!entry.expiry || Date.now() <= entry.expiry)) {
-        // Restore into sessionStorage so downstream page guards still work
-        sessionStorage.setItem('currentUser', JSON.stringify({ role: entry.role, username: entry.username, id: entry.id }));
-        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
-<<<<<<< HEAD
-        // Redirect seniors to senior-mobile.php for mobile devices, otherwise senior.php
-        if      (entry.role === 'senior')   { window.location.href = isMobile ? 'senior-mobile.php' : 'senior.php'; return; }
-=======
-        if      (entry.role === 'senior')   { window.location.href = 'senior.php'; return; }
->>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
-        else if (entry.role === 'merchant') { window.location.href = 'merchant.php'; return; }
-        else if (entry.role === 'osca')     { window.location.href = 'osca.php'; return; }
-        else if (entry.role === 'admin')    { window.location.href = 'admin.php'; return; }
-      } else {
-        // Expired — clean it up
-        localStorage.removeItem(LINGAP_SESSION_KEY);
-      }
-    } catch(e) { localStorage.removeItem(LINGAP_SESSION_KEY); }
-  }
+// Only auto-redirect if a *persistent* (Remember Me) session exists in localStorage.
+// Do NOT rely on sessionStorage here — it may be stale if a page's logout
+// failed to clear it before redirecting.
+const ls = localStorage.getItem(LINGAP_SESSION_KEY);
+if (ls) {
+  try {
+    const entry = JSON.parse(ls);
+    if (entry && entry.role && (!entry.expiry || Date.now() <= entry.expiry)) {
+      // Restore into sessionStorage so downstream page guards still work
+      sessionStorage.setItem('currentUser', JSON.stringify({ role: entry.role, username: entry.username, id: entry.id }));
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768;
+      // Redirect seniors to senior-mobile.php for mobile devices, otherwise senior.php
+      if      (entry.role === 'senior')   { window.location.href = isMobile ? 'senior-mobile.php' : 'senior.php'; return; }
+      else if (entry.role === 'merchant') { window.location.href = 'merchant.php'; return; }
+      else if (entry.role === 'osca')     { window.location.href = 'osca.php'; return; }
+      else if (entry.role === 'admin')    { window.location.href = 'admin.php'; return; }
+    } else {
+      // Expired — clean it up
+      localStorage.removeItem(LINGAP_SESSION_KEY);
+    }
+  } catch(e) { localStorage.removeItem(LINGAP_SESSION_KEY); }
+}
   // No valid persistent session — show login form normally
 }
 
@@ -1311,16 +1307,9 @@ function initAdmin(){
     }
   })();
   
-  // Admin panel buttons
-<<<<<<< HEAD
-  const logoutBtnEl = document.getElementById('logoutBtn') || document.getElementById('logoutBtnProfile');
-  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ window._Session.clear(); location.href='logout.php'; });
-=======
-  const logoutBtnEl = document.getElementById('logoutBtn');
-  if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ window._Session.clear(); location.href='logout.php'; });
-  const logoutBtnProfileEl = document.getElementById('logoutBtnProfile');
-  if (logoutBtnProfileEl) logoutBtnProfileEl.addEventListener('click', ()=>{ if(typeof openLogoutModal==='function'){ openLogoutModal(); } else { window._Session.clear(); location.href='logout.php'; } });
->>>>>>> 40da9159e694dd37de15a169db496caece8a5e21
+// Admin panel buttons
+const logoutBtnEl = document.getElementById('logoutBtn') || document.getElementById('logoutBtnProfile');
+if (logoutBtnEl) logoutBtnEl.addEventListener('click', ()=>{ window._Session.clear(); location.href='logout.php'; });
   
   const saveSeniorBtn = document.getElementById('saveSenior');
   if(saveSeniorBtn) {

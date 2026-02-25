@@ -11,7 +11,7 @@ if (empty($_SESSION['role']) || $_SESSION['role'] !== 'merchant') {
     <meta charset="utf-8"/>
     <link rel="icon" type="image/png" href="assets/pics/logo.png">
     <link rel="apple-touch-icon" href="assets/pics/logo.png">
-    <link rel="manifest" href="manifest.php">
+    <link rel="manifest" href="manifest.webmanifest">
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>LingapApu — Merchant Portal</title>
     <link rel="stylesheet" href="assets/style.css">
@@ -580,24 +580,31 @@ function initMerchantPortal() {
 }
 
 function loadMerchantProfile() {
+    // Get session username from sessionStorage
+    let currentSession = null;
+    try {
+        const sessStr = sessionStorage.getItem('currentUser');
+        currentSession = sessStr ? JSON.parse(sessStr) : null;
+    } catch(e) {}
+    const username = (currentSession && currentSession.username) || 'merchant';
+    
     // Load or create merchant profile
     const allMerchants = JSON.parse(localStorage.getItem('merchantProfiles') || '{}');
     
-    const username = 'merchant';
     if (allMerchants[username]) {
         merchantData = allMerchants[username];
     } else {
         // Create default merchant profile
         merchantData = {
             id: 'MERCH-' + username.toUpperCase(),
-            username: session.username,
-            name: session.username === 'merchant' ? 'Sample Store' : session.username + ' Store',
+            username: username,
+            name: username === 'merchant' ? 'Sample Store' : username + ' Store',
             type: 'grocery',
             contact: '0912 345 6789',
             address: 'Floridablanca, Pampanga',
             defaultDiscount: 20
         };
-        allMerchants[session.username] = merchantData;
+        allMerchants[username] = merchantData;
         localStorage.setItem('merchantProfiles', JSON.stringify(allMerchants));
     }
     
@@ -618,7 +625,7 @@ function loadMerchantProfile() {
     const bannerName = document.getElementById('merchantBannerName');
     if (bannerName) bannerName.textContent = merchantData.name || 'Merchant';
     const bannerUsername = document.getElementById('merchantBannerUsername');
-    if (bannerUsername) bannerUsername.textContent = '@' + (merchantData.username || session.username || '');
+    if (bannerUsername) bannerUsername.textContent = '@' + (merchantData.username || username || '');
     const bannerType = document.getElementById('merchantBannerType');
     if (bannerType) bannerType.textContent = typeLabel;
     const bannerId = document.getElementById('merchantBannerId');
@@ -629,7 +636,7 @@ function loadMerchantProfile() {
     const infoId = document.getElementById('merchantInfoId');
     if (infoId) infoId.textContent = merchantData.id || 'MERCH-XXX';
     const infoUsername = document.getElementById('merchantInfoUsername');
-    if (infoUsername) infoUsername.textContent = '@' + (merchantData.username || session.username || '');
+    if (infoUsername) infoUsername.textContent = '@' + (merchantData.username || username || '');
 
     // Discount preview
     updateDiscountPreview();
@@ -666,6 +673,7 @@ function setupEventListeners() {
     document.getElementById('saveMerchantProfileBtn').addEventListener('click', saveMerchantProfile);
     document.getElementById('logoutMerchantBtn').addEventListener('click', () => {
         if (confirm('Are you sure you want to logout?')) {
+            if (window._Session) { window._Session.clear(); }
             window.location.href = 'logout.php';
         }
     });
@@ -780,7 +788,7 @@ function startScanner() {
         statusDiv.textContent = '📱 Point camera at QR code';
         statusDiv.style.color = '#10b981';
         
-        // Start scanning loop
+        // Start scanning loop (enhanced frequency for better detection)
         scanningInterval = setInterval(() => {
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 // Set canvas size to match video
@@ -790,9 +798,16 @@ function startScanner() {
                 if (canvas.width > 0 && canvas.height > 0) {
                     canvasContext.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
+                    // Apply contrast enhancement filter to canvas
                     const imageData = canvasContext.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const grayscale = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+                        const enhanced = grayscale * 1.2; // slight brightness boost
+                        data[i] = data[i+1] = data[i+2] = Math.min(255, Math.max(0, enhanced));
+                    }
                     const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                        inversionAttempts: "dontInvert",
+                        inversionAttempts: "attemptBoth",
                     });
                     
                     if (code) {
@@ -808,7 +823,7 @@ function startScanner() {
                     }
                 }
             }
-        }, 300);
+        }, 150);
     })
     .catch(err => {
         console.error('Camera error:', err);
@@ -1238,9 +1253,17 @@ async function loadMerchantTransactions() {
 }
 
 function saveMerchantProfile() {
+    // Get session username from sessionStorage
+    let currentSession = null;
+    try {
+        const sessStr = sessionStorage.getItem('currentUser');
+        currentSession = sessStr ? JSON.parse(sessStr) : null;
+    } catch(e) {}
+    const username = (currentSession && currentSession.username) || 'merchant';
+    
     merchantData = {
         id: merchantData.id,
-        username: 'merchant',
+        username: username,
         name: document.getElementById('merchantName').value,
         type: document.getElementById('merchantType').value,
         contact: document.getElementById('merchantContact').value,
@@ -1249,7 +1272,7 @@ function saveMerchantProfile() {
     };
     
     const allMerchants = JSON.parse(localStorage.getItem('merchantProfiles') || '{}');
-    allMerchants[session.username] = merchantData;
+    allMerchants[username] = merchantData;
     localStorage.setItem('merchantProfiles', JSON.stringify(allMerchants));
 
     // Refresh banner to reflect new values
